@@ -1,0 +1,213 @@
+/* STUDENT THEME - Fresh, friendly, approachable */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Poppins', 'Inter', -apple-system, sans-serif;
+  background: linear-gradient(165deg, #e4f5e9 0%, #d4e9e2 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.student-login,
+.student-register,
+.student-dashboard,
+.forgot-pin.student {
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  border-radius: 48px;
+  box-shadow: 
+    0 25px 40px -15px rgba(45, 110, 80, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.7) inset;
+  padding: 40px 36px;
+  border: 1px solid rgba(130, 200, 160, 0.3);
+  transition: all 0.3s ease;
+}
+
+.student-login:hover,
+.student-register:hover,
+.student-dashboard:hover {
+  box-shadow: 0 30px 50px -18px rgba(35, 110, 70, 0.3);
+  background: rgba(255, 255, 255, 0.97);
+  transform: translateY(-3px);
+}
+
+.student-login h2,
+.student-register h2,
+.student-dashboard h2,
+.forgot-pin.student h2 {
+  color: #1e4a4d;
+  font-size: 2.2rem;
+  font-weight: 650;
+  margin-bottom: 24px;
+  border-left: 10px solid #52b788;
+  padding-left: 22px;
+  line-height: 1.1;
+}
+
+.student-login input,
+.student-register input,
+.forgot-pin.student input {
+  width: 100%;
+  padding: 18px 24px;
+  margin: 10px 0 6px;
+  border: none;
+  border-radius: 50px;
+  background: white;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.02),
+    0 0 0 1.5px rgba(82, 183, 136, 0.1);
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  color: #13474a;
+}
+
+.student-login input:focus,
+.student-register input:focus,
+.forgot-pin.student input:focus {
+  outline: none;
+  box-shadow: 
+    0 10px 20px -8px rgba(82, 183, 136, 0.3),
+    0 0 0 4px rgba(82, 183, 136, 0.15);
+}
+
+.student-login input[type="password"],
+.student-register input[type="password"] {
+  letter-spacing: 8px;
+  font-size: 1.4rem;
+  font-weight: 550;
+  color: #1e6f5c;
+}
+
+.student-login button,
+.student-register button,
+.forgot-pin.student button {
+  width: 100%;
+  background: linear-gradient(145deg, #52b788, #2d6a4f);
+  border: none;
+  padding: 18px 28px;
+  border-radius: 60px;
+  color: white;
+  font-size: 1.18rem;
+  font-weight: 650;
+  letter-spacing: 1px;
+  margin: 28px 0 18px;
+  cursor: pointer;
+  transition: 0.2s;
+  box-shadow: 0 14px 22px -10px #2d6a4f;
+}
+
+.student-login button:hover,
+.student-register button:hover,
+.forgot-pin.student button:hover {
+  background: linear-gradient(145deg, #40916c, #1e4a4d);
+  transform: translateY(-3px);
+  box-shadow: 0 22px 28px -12px #1e4a4d;
+}
+
+.student-login p.clickable,
+.student-register p.clickable,
+.student-dashboard p.clickable,
+.forgot-pin.student p.clickable {
+  display: inline-block;
+  color: #2d6a4f;
+  font-weight: 620;
+  margin: 12px 20px 8px 0;
+  padding: 8px 6px;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.15s;
+}
+
+.student-login p.clickable:hover,
+.student-register p.clickable:hover,
+.student-dashboard p.clickable:hover,
+.forgot-pin.student p.clickable:hover {
+  border-bottom-color: #52b788;
+  color: #1e4a4d;
+  transform: translateY(-2px);
+}
+
+.student-register .error-message {
+  background: rgba(255, 140, 120, 0.12);
+  color: #b34a4a;
+  padding: 16px 24px;
+  border-radius: 60px;
+  border: 1px solid rgba(255, 120, 100, 0.25);
+  text-align: center;
+  margin-top: 24px;
+}
+
+.student-dashboard .welcome-message {
+  background: linear-gradient(145deg, #e2f0e6, #d3e9dd);
+  padding: 22px 26px;
+  border-radius: 32px;
+  border: 1px solid rgba(82, 183, 136, 0.3);
+  color: #1e4a4d;
+  font-weight: 520;
+  font-size: 1.15rem;
+  text-align: center;
+  margin: 30px 0 10px;
+}
+
+.dashboard-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.grade-card {
+  background: white;
+  padding: 20px;
+  border-radius: 24px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.04);
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid rgba(82, 183, 136, 0.2);
+}
+
+.grade-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 24px rgba(82, 183, 136, 0.2);
+  border-color: #52b788;
+}
+
+.grade-card h3 {
+  color: #1e4a4d;
+  margin-bottom: 8px;
+}
+
+.grade-card p {
+  color: #5a7c74;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .student-login,
+  .student-register,
+  .student-dashboard,
+  .forgot-pin.student {
+    padding: 32px 24px;
+    border-radius: 36px;
+  }
+  
+  .student-login h2 {
+    font-size: 1.9rem;
+  }
+  
+  .dashboard-cards {
+    grid-template-columns: 1fr;
+  }
+}

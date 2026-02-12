@@ -1,30 +1,866 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../../services/api";
+import "../../styles/student.css";
 
 function StudentDashboard() {
   const navigate = useNavigate();
+  const [student, setStudent] = useState(null);
+  const [content, setContent] = useState([]);
+  const [quizzes, setQuizzes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedGrade, setSelectedGrade] = useState(null);
+  const [selectedSubject, setSelectedSubject] = useState('all');
+  const [selectedType, setSelectedType] = useState('all');
+  const [playingAudio, setPlayingAudio] = useState(null);
+  const [audioPlayer, setAudioPlayer] = useState(null);
+  
+  // Note viewer state
+  const [viewingNote, setViewingNote] = useState(null);
+  const [activeSubtopic, setActiveSubtopic] = useState(0);
+  
+  // ============ TEXT-TO-SPEECH PRONUNCIATION TOOL ============
+  const [pronunciationWord, setPronunciationWord] = useState('');
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState('');
+  const [availableVoices, setAvailableVoices] = useState([]);
+  const [speechRate, setSpeechRate] = useState(1);
+  const [speechPitch, setSpeechPitch] = useState(1);
+  const [recentWords, setRecentWords] = useState([]);
+  const [showPronunciationTool, setShowPronunciationTool] = useState(true);
 
+  // Initialize speech synthesis and load voices - DEFAULT TO FEMALE VOICE
+  useEffect(() => {
+    if (window.speechSynthesis) {
+      // Load voices
+      const loadVoices = () => {
+        const voices = window.speechSynthesis.getVoices();
+        
+        // Filter for English voices
+        const englishVoices = voices.filter(voice => 
+          voice.lang.includes('en-') || voice.lang.includes('en_US') || voice.lang.includes('en_GB')
+        );
+        
+        setAvailableVoices(englishVoices);
+        
+        // ----- PREFER FEMALE VOICES -----
+        if (englishVoices.length > 0) {
+          // Priority 1: Google UK English Female (most natural female voice)
+          let femaleVoice = englishVoices.find(voice => 
+            voice.name.includes('Google UK English Female') || 
+            voice.name.includes('Google US English Female')
+          );
+          
+          // Priority 2: Microsoft Zira (Windows female voice)
+          if (!femaleVoice) {
+            femaleVoice = englishVoices.find(voice => 
+              voice.name.includes('Zira') || 
+              voice.name.includes('Hazel') || 
+              voice.name.includes('Susan') || 
+              voice.name.includes('Female')
+            );
+          }
+          
+          // Priority 3: Samantha (macOS female voice)
+          if (!femaleVoice) {
+            femaleVoice = englishVoices.find(voice => 
+              voice.name.includes('Samantha')
+            );
+          }
+          
+          // Priority 4: Any voice with 'en-US' or 'en-GB' (prefer US)
+          if (!femaleVoice) {
+            femaleVoice = englishVoices.find(voice => 
+              voice.lang.includes('en-US')
+            );
+          }
+          
+          // Set the selected voice - default to female if found, otherwise first voice
+          setSelectedVoice(femaleVoice ? femaleVoice.name : englishVoices[0].name);
+        }
+      };
+
+      loadVoices();
+      
+      // Chrome loads voices asynchronously
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+      }
+    }
+
+    // Load recent words from localStorage
+    const saved = localStorage.getItem('recentPronunciationWords');
+    if (saved) {
+      setRecentWords(JSON.parse(saved));
+    }
+  }, []);
+
+  // Save recent words to localStorage
+  useEffect(() => {
+    if (recentWords.length > 0) {
+      localStorage.setItem('recentPronunciationWords', JSON.stringify(recentWords.slice(0, 10)));
+    }
+  }, [recentWords]);
+
+  // Handle text-to-speech pronunciation - WITH FEMALE VOICE PRIORITY
+  const handlePronounce = () => {
+    if (!pronunciationWord.trim()) {
+      alert('Please enter a word to pronounce');
+      return;
+    }
+
+    try {
+      // Stop any current speech
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+
+      const utterance = new SpeechSynthesisUtterance(pronunciationWord);
+      
+      // Set selected voice (should be female by default)
+      if (selectedVoice) {
+        const voice = availableVoices.find(v => v.name === selectedVoice);
+        if (voice) utterance.voice = voice;
+      }
+      
+      // Set rate and pitch
+      utterance.rate = speechRate;
+      utterance.pitch = speechPitch;
+      
+      // Event handlers
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+      };
+      
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        
+        // Add to recent words
+        const word = pronunciationWord.trim();
+        if (word && !recentWords.includes(word)) {
+          setRecentWords(prev => [word, ...prev].slice(0, 10));
+        }
+      };
+      
+      utterance.onerror = (event) => {
+        console.error('Speech error:', event);
+        setIsSpeaking(false);
+        alert('Error pronouncing word. Please try again.');
+      };
+      
+      window.speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.error('TTS Error:', error);
+      alert('Speech synthesis is not supported in your browser.');
+    }
+  };
+
+  // Handle stop speaking
+  const handleStopSpeaking = () => {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
+  // Handle voice change
+  const handleVoiceChange = (e) => {
+    setSelectedVoice(e.target.value);
+  };
+
+  // Handle rate change
+  const handleRateChange = (e) => {
+    setSpeechRate(parseFloat(e.target.value));
+  };
+
+  // Handle pitch change
+  const handlePitchChange = (e) => {
+    setSpeechPitch(parseFloat(e.target.value));
+  };
+
+  // Clear recent words
+  const handleClearRecent = () => {
+    setRecentWords([]);
+    localStorage.removeItem('recentPronunciationWords');
+  };
+
+  // ALL GRADES from 4 to 12
+  const allGrades = [4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+  // Get student info from localStorage or session
+  useEffect(() => {
+    const studentData = JSON.parse(localStorage.getItem('student') || sessionStorage.getItem('student'));
+    if (studentData) {
+      setStudent(studentData);
+      const grade = studentData.grade || 8;
+      setSelectedGrade(grade);
+      fetchContent(grade);
+      fetchQuizzes(grade);
+    }
+    setLoading(false);
+  }, []);
+
+  // Fetch content based on grade
+  const fetchContent = async (grade) => {
+    try {
+      const response = await api.get(`/api/student/content?grade=${grade}`);
+      setContent(response.data);
+    } catch (error) {
+      console.error('Error fetching content:', error);
+    }
+  };
+
+  // Fetch quizzes based on grade
+  const fetchQuizzes = async (grade) => {
+    try {
+      const response = await api.get(`/api/student/quizzes?grade=${grade}&studentId=${student?._id || student?.id}`);
+      setQuizzes(response.data);
+    } catch (error) {
+      console.error('Error fetching quizzes:', error);
+    }
+  };
+
+  // Handle grade selection
+  const handleGradeSelect = (grade) => {
+    setSelectedGrade(grade);
+    setSelectedSubject('all');
+    setSelectedType('all');
+    setViewingNote(null);
+    fetchContent(grade);
+    fetchQuizzes(grade);
+  };
+
+  // Handle content view
+  const handleViewContent = async (item) => {
+    try {
+      await api.put(`/api/student/content/${item._id}/view`);
+    } catch (error) {
+      console.error('Error incrementing view:', error);
+    }
+
+    if (item.type === 'video') {
+      const videoUrl = `http://localhost:4000${item.url}`;
+      window.open(videoUrl, '_blank');
+    } else if (item.type === 'audio') {
+      playAudio(item);
+    } else if (item.type === 'link') {
+      window.open(item.linkUrl, '_blank');
+    } else if (item.type === 'note') {
+      setViewingNote(item);
+      setActiveSubtopic(0);
+    }
+  };
+
+  // Handle audio playback
+  const playAudio = (item) => {
+    try {
+      const audioUrl = `http://localhost:4000${item.url}`;
+      
+      if (playingAudio === item._id) {
+        if (audioPlayer) {
+          audioPlayer.pause();
+          audioPlayer.currentTime = 0;
+        }
+        setPlayingAudio(null);
+        setAudioPlayer(null);
+      } else {
+        if (audioPlayer) {
+          audioPlayer.pause();
+          audioPlayer.currentTime = 0;
+        }
+        
+        const audio = new Audio(audioUrl);
+        
+        audio.onended = () => {
+          setPlayingAudio(null);
+          setAudioPlayer(null);
+        };
+        
+        audio.onerror = () => {
+          alert('Error playing audio. Please try downloading the file instead.');
+          setPlayingAudio(null);
+          setAudioPlayer(null);
+        };
+        
+        audio.play().catch(error => {
+          console.error('❌ Failed to play audio:', error);
+          alert('Unable to play audio. Please download the file to listen.');
+        });
+        
+        setPlayingAudio(item._id);
+        setAudioPlayer(audio);
+      }
+    } catch (error) {
+      console.error('❌ Audio playback error:', error);
+      alert('Error playing audio. Please try downloading the file.');
+    }
+  };
+
+  // Handle content download
+  const handleDownload = async (item) => {
+    try {
+      await api.put(`/api/student/content/${item._id}/download`);
+      
+      if (item.type === 'note') {
+        let content = `${item.title}\n`;
+        content += `${'='.repeat(item.title.length)}\n\n`;
+        content += `Subject: ${item.subject}\n`;
+        content += `Grade: ${item.grade}\n`;
+        content += `Topic: ${item.topic || 'General'}\n\n`;
+        content += `Description: ${item.description || 'No description'}\n\n`;
+        content += `${'='.repeat(50)}\n\n`;
+        
+        item.subtopics?.forEach((sub, index) => {
+          content += `${index + 1}. ${sub.title}\n`;
+          content += `${'-'.repeat(sub.title.length + 3)}\n`;
+          content += `${sub.content}\n\n`;
+          
+          if (sub.keywords?.length > 0) {
+            content += `KEYWORDS:\n`;
+            sub.keywords.forEach(kw => {
+              content += `  • ${kw.word}: ${kw.definition}\n`;
+            });
+            content += `\n`;
+          }
+          content += `${'-'.repeat(50)}\n\n`;
+        });
+        
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${item.title.replace(/\s+/g, '_')}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } else {
+        const downloadUrl = `http://localhost:4000${item.url}`;
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = item.fileName || 'download';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error('Error downloading:', error);
+      alert('Error downloading file. Please try again.');
+    }
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('student');
+    sessionStorage.removeItem('student');
+    
+    if (audioPlayer) {
+      audioPlayer.pause();
+      audioPlayer.currentTime = 0;
+      setAudioPlayer(null);
+      setPlayingAudio(null);
+    }
+    
+    navigate('/');
+  };
+
+  // Handle back from note viewer
+  const handleCloseNoteViewer = () => {
+    setViewingNote(null);
+    setActiveSubtopic(0);
+  };
+
+  // Filter content
+  const filteredContent = content.filter(item => {
+    if (selectedSubject !== 'all' && item.subject !== selectedSubject) return false;
+    if (selectedType !== 'all' && item.type !== selectedType) return false;
+    return true;
+  });
+
+  // Get unique subjects
+  const subjects = ['all', ...new Set(content.map(item => item.subject).filter(Boolean))];
+
+  // ============ RENDER PRONUNCIATION TOOL ============
+  const renderPronunciationTool = () => (
+    <div className="pronunciation-tool-section">
+      <div className="pronunciation-header">
+        <h3>🔊 Pronunciation Helper</h3>
+        <button 
+          className="btn-toggle-tool"
+          onClick={() => setShowPronunciationTool(!showPronunciationTool)}
+        >
+          {showPronunciationTool ? '−' : '+'}
+        </button>
+      </div>
+      
+      {showPronunciationTool && (
+        <div className="pronunciation-tool">
+          <div className="pronunciation-input-area">
+            <div className="input-group">
+              <input
+                type="text"
+                placeholder="Type a word to hear its pronunciation..."
+                value={pronunciationWord}
+                onChange={(e) => setPronunciationWord(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handlePronounce()}
+                className="pronunciation-input"
+              />
+              {isSpeaking ? (
+                <button 
+                  onClick={handleStopSpeaking}
+                  className="btn-stop"
+                >
+                  ⏹️ Stop
+                </button>
+              ) : (
+                <button 
+                  onClick={handlePronounce}
+                  className="btn-pronounce"
+                  disabled={!pronunciationWord.trim()}
+                >
+                  🔊 Pronounce
+                </button>
+              )}
+            </div>
+            
+            <div className="voice-controls">
+              <div className="control-group">
+                <label>👩 Voice:</label>
+                <select 
+                  value={selectedVoice} 
+                  onChange={handleVoiceChange}
+                  className="voice-select"
+                >
+                  {availableVoices.map(voice => (
+                    <option key={voice.name} value={voice.name}>
+                      {voice.name.includes('Female') ? '👩 ' : '👨 '}{voice.name} ({voice.lang})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="control-group">
+                <label>⚡ Speed: {speechRate.toFixed(1)}x</label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2"
+                  step="0.1"
+                  value={speechRate}
+                  onChange={handleRateChange}
+                  className="slider"
+                />
+              </div>
+              
+              <div className="control-group">
+                <label>🎵 Pitch: {speechPitch.toFixed(1)}</label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2"
+                  step="0.1"
+                  value={speechPitch}
+                  onChange={handlePitchChange}
+                  className="slider"
+                />
+              </div>
+            </div>
+          </div>
+          
+          {recentWords.length > 0 && (
+            <div className="recent-words">
+              <div className="recent-header">
+                <span>📋 Recent Words:</span>
+                <button onClick={handleClearRecent} className="btn-clear">
+                  Clear
+                </button>
+              </div>
+              <div className="recent-words-list">
+                {recentWords.map((word, index) => (
+                  <button
+                    key={index}
+                    className="recent-word-btn"
+                    onClick={() => {
+                      setPronunciationWord(word);
+                      setTimeout(() => handlePronounce(), 100);
+                    }}
+                  >
+                    🔊 {word}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <div className="pronunciation-tip">
+            <span className="tip-icon">💡</span>
+            <span className="tip-text">
+              Type any word and click Pronounce to hear its correct pronunciation. 
+              Default voice is set to female. Adjust voice, speed, and pitch to your preference.
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // ============ NOTE VIEWER ============
+  if (viewingNote) {
+    const note = viewingNote;
+    return (
+      <div className="student-dashboard note-viewer-mode">
+        <div className="note-viewer-header">
+          <button onClick={handleCloseNoteViewer} className="btn-back">
+            ← Back to Dashboard
+          </button>
+          <button onClick={() => handleDownload(note)} className="btn-download">
+            ⬇️ Download Note
+          </button>
+        </div>
+
+        <div className="note-content-wrapper">
+          <div className="note-sidebar">
+            <h3>📑 Subtopics</h3>
+            <ul className="subtopic-list">
+              {note.subtopics?.map((sub, index) => (
+                <li 
+                  key={index} 
+                  className={activeSubtopic === index ? 'active' : ''}
+                  onClick={() => setActiveSubtopic(index)}
+                >
+                  {index + 1}. {sub.title}
+                </li>
+              ))}
+            </ul>
+            
+            {note.subtopics?.length > 0 && (
+              <div className="note-stats-sidebar">
+                <div className="stat-item">
+                  <span>📚 Subtopics</span>
+                  <strong>{note.subtopics.length}</strong>
+                </div>
+                <div className="stat-item">
+                  <span>🔑 Keywords</span>
+                  <strong>
+                    {note.subtopics.reduce((acc, sub) => acc + (sub.keywords?.length || 0), 0)}
+                  </strong>
+                </div>
+                <div className="stat-item">
+                  <span>👁️ Views</span>
+                  <strong>{note.views || 0}</strong>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="note-main-content">
+            <div className="note-header">
+              <h1>{note.title}</h1>
+              <div className="note-meta">
+                <span className="subject-badge">{note.subject}</span>
+                <span className="grade-badge">Grade {note.grade}</span>
+                <span className="topic-badge">{note.topic || 'General'}</span>
+              </div>
+              {note.description && (
+                <div className="note-description">
+                  <p>{note.description}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="note-body">
+              {note.subtopics && note.subtopics.length > 0 ? (
+                <div className="subtopic-content">
+                  <h2>{note.subtopics[activeSubtopic]?.title}</h2>
+                  <div className="subtopic-text">
+                    {note.subtopics[activeSubtopic]?.content.split('\n').map((paragraph, i) => (
+                      <p key={i}>{paragraph}</p>
+                    ))}
+                  </div>
+                  
+                  {note.subtopics[activeSubtopic]?.keywords?.length > 0 && (
+                    <div className="keyword-section">
+                      <h3>🔑 Keywords & Definitions</h3>
+                      <div className="keyword-grid">
+                        {note.subtopics[activeSubtopic].keywords.map((kw, idx) => (
+                          <div key={idx} className="keyword-card">
+                            <span className="keyword-term">{kw.word}</span>
+                            <span className="keyword-def">{kw.definition}</span>
+                            <button
+                              className="btn-pronounce-small"
+                              onClick={() => {
+                                setPronunciationWord(kw.word);
+                                setShowPronunciationTool(true);
+                                setTimeout(() => handlePronounce(), 100);
+                              }}
+                              title="Pronounce this word"
+                            >
+                              🔊
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="no-subtopics">
+                  <p>No subtopics available for this note.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============ GRADE SELECTION ============
+  if (!selectedGrade) {
+    return (
+      <div className="student-dashboard">
+        <div className="dashboard-header">
+          <h2>Student Dashboard</h2>
+          <button 
+            className="btn-logout"
+            onClick={handleLogout}
+          >
+            🚪 Logout
+          </button>
+        </div>
+        <p className="welcome-message">
+          Welcome back, {student?.username || 'Student'}! Select your grade to continue.
+        </p>
+        
+        <div className="grade-selection">
+          <h3>Select Your Grade (4-12)</h3>
+          <div className="grade-cards">
+            {allGrades.map(grade => (
+              <div 
+                key={grade} 
+                className="grade-card"
+                onClick={() => handleGradeSelect(grade)}
+              >
+                <h3>Grade {grade}</h3>
+                <p>Access learning materials for Grade {grade}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============ MAIN DASHBOARD ============
   return (
     <div className="student-dashboard">
-      <h2>Student Dashboard</h2>
-      <p className="welcome-message">Welcome back! Ready to learn?</p>
-      
-      <div className="dashboard-cards">
-        <div className="grade-card" onClick={() => navigate("/grade/9")}>
-          <h3>Grade 9</h3>
-          <p>Mathematics, Science, English</p>
+      <div className="dashboard-header">
+        <div>
+          <h2>Grade {selectedGrade} Dashboard</h2>
+          <p className="welcome-message">
+            Welcome back, {student?.username || 'Student'}! Continue your learning journey.
+          </p>
         </div>
-        <div className="grade-card" onClick={() => navigate("/grade/10")}>
-          <h3>Grade 10</h3>
-          <p>Mathematics, Science, English</p>
+        <div className="header-actions">
+          <button 
+            className="btn-change-grade"
+            onClick={() => setSelectedGrade(null)}
+          >
+            🔄 Change Grade
+          </button>
+          <button 
+            className="btn-logout"
+            onClick={handleLogout}
+          >
+            🚪 Logout
+          </button>
         </div>
-        <div className="grade-card" onClick={() => navigate("/grade/11")}>
-          <h3>Grade 11</h3>
-          <p>Mathematics, Science, English</p>
+      </div>
+
+      {/* PRONUNCIATION TOOL - WITH FEMALE VOICE DEFAULT */}
+      {renderPronunciationTool()}
+
+      {/* Content Filters */}
+      <div className="content-filters">
+        <div className="filter-group">
+          <label>📚 Subject:</label>
+          <select 
+            value={selectedSubject} 
+            onChange={(e) => setSelectedSubject(e.target.value)}
+            className="subject-select"
+          >
+            {subjects.map(subject => (
+              <option key={subject} value={subject}>
+                {subject === 'all' ? '🎯 All Subjects' : subject}
+              </option>
+            ))}
+          </select>
         </div>
-        <div className="grade-card" onClick={() => navigate("/grade/12")}>
-          <h3>Grade 12</h3>
-          <p>Mathematics, Science, English</p>
+
+        <div className="filter-group">
+          <label>📁 Resource Type:</label>
+          <select 
+            value={selectedType} 
+            onChange={(e) => setSelectedType(e.target.value)}
+          >
+            <option value="all">📋 All Resources</option>
+            <option value="note">📝 Notes & Study Guides</option>
+            <option value="video">🎥 Video Lessons</option>
+            <option value="audio">🎧 Audio Lessons</option>
+            <option value="link">🔗 External Links</option>
+          </select>
         </div>
+      </div>
+
+      {/* Content Stats Summary */}
+      <div className="content-stats-summary">
+        <div className="stat-badge">
+          <span>📊 Total: {content.length}</span>
+        </div>
+        <div className="stat-badge">
+          <span>📝 Notes: {content.filter(i => i.type === 'note').length}</span>
+        </div>
+        <div className="stat-badge">
+          <span>🎥 Videos: {content.filter(i => i.type === 'video').length}</span>
+        </div>
+        <div className="stat-badge">
+          <span>🎧 Audio: {content.filter(i => i.type === 'audio').length}</span>
+        </div>
+        <div className="stat-badge">
+          <span>🔗 Links: {content.filter(i => i.type === 'link').length}</span>
+        </div>
+      </div>
+
+      {/* Content Grid */}
+      <div className="content-section">
+        <h3>📚 Learning Resources</h3>
+        {filteredContent.length === 0 ? (
+          <div className="no-content">
+            <p>No resources available for Grade {selectedGrade} yet.</p>
+            <p className="hint">
+              {selectedSubject !== 'all' 
+                ? `No ${selectedSubject} resources found. ` 
+                : 'Check back later for new content! '}
+              Your teacher will upload materials soon.
+            </p>
+          </div>
+        ) : (
+          <div className="content-grid">
+            {filteredContent.map(item => (
+              <div key={item._id} className="content-card">
+                <div className="content-icon">
+                  {item.type === 'note' && '📝'}
+                  {item.type === 'video' && '🎥'}
+                  {item.type === 'audio' && '🎧'}
+                  {item.type === 'link' && '🔗'}
+                </div>
+                
+                <div className="content-info">
+                  <h4>{item.title}</h4>
+                  <div className="meta-tags">
+                    <span className="subject-tag">{item.subject}</span>
+                    <span className="topic-tag">{item.topic || 'General'}</span>
+                  </div>
+                  <p className="description">{item.description}</p>
+                  
+                  {/* File info for videos/audio */}
+                  {(item.type === 'video' || item.type === 'audio') && item.fileName && (
+                    <div className="file-meta">
+                      <span className="file-name">📁 {item.fileName}</span>
+                      {item.duration > 0 && (
+                        <span className="duration">⏱️ {item.duration} min</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Subtopics preview for notes */}
+                  {item.type === 'note' && item.subtopics?.length > 0 && (
+                    <div className="subtopics-preview">
+                      <span>📚 {item.subtopics.length} subtopics</span>
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="content-actions">
+                    {item.type === 'audio' ? (
+                      <button 
+                        className={`btn-play ${playingAudio === item._id ? 'playing' : ''}`}
+                        onClick={() => handleViewContent(item)}
+                      >
+                        {playingAudio === item._id ? '⏸️ Pause' : '▶️ Play'}
+                      </button>
+                    ) : (
+                      <button 
+                        className="btn-view"
+                        onClick={() => handleViewContent(item)}
+                      >
+                        {item.type === 'link' ? '🔗 Visit Link' : '👁️ View'}
+                      </button>
+                    )}
+                    
+                    {(item.type === 'video' || item.type === 'audio' || item.type === 'note') && (
+                      <button 
+                        className="btn-download"
+                        onClick={() => handleDownload(item)}
+                      >
+                        ⬇️ Download
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Stats */}
+                  <div className="content-stats">
+                    <span>👁️ {item.views || 0} views</span>
+                    <span>⬇️ {item.downloads || 0} downloads</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Quizzes Section */}
+      <div className="quizzes-section">
+        <h3>📋 Available Quizzes</h3>
+        {quizzes.length === 0 ? (
+          <div className="no-content">
+            <p>No quizzes available for Grade {selectedGrade} yet.</p>
+            <p className="hint">Check back later for new assessments!</p>
+          </div>
+        ) : (
+          <div className="quizzes-grid">
+            {quizzes.map(quiz => (
+              <div key={quiz._id} className="quiz-card">
+                <div className="quiz-header">
+                  <h4>{quiz.title}</h4>
+                  <span className="status active">Active</span>
+                </div>
+                
+                <div className="quiz-info">
+                  <p>📚 {quiz.subject}</p>
+                  <p>❓ {quiz.questions?.length || 0} questions</p>
+                  <p>⏱️ {quiz.timeLimit} minutes</p>
+                  <p>✅ Pass: {quiz.passingScore}%</p>
+                  <p>📅 Due: {new Date(quiz.dueDate).toLocaleDateString()}</p>
+                </div>
+
+                <div className="quiz-footer">
+                  <span className="attempts">
+                    🎯 {quiz.attemptsRemaining !== undefined ? quiz.attemptsRemaining : quiz.attemptsAllowed} attempt(s) left
+                  </span>
+                  <button 
+                    className="btn-start-quiz"
+                    onClick={() => navigate(`/quiz/${quiz._id}?studentId=${student?._id || student?.id}`)}
+                    disabled={quiz.attemptsRemaining === 0}
+                  >
+                    {quiz.attemptsRemaining === 0 ? 'No Attempts Left' : 'Start Quiz'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

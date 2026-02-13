@@ -118,6 +118,15 @@ function AdminDashboard() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState('');
+  const [editingContentId, setEditingContentId] = useState(null);
+  const [editingQuizId, setEditingQuizId] = useState(null);
+
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
 
   useEffect(() => {
     fetchDashboardStats();
@@ -229,6 +238,15 @@ function AdminDashboard() {
     setContentForm({ ...contentForm, subtopics: newSubtopics });
   };
 
+  const handleClearSubtopic = () => {
+    setCurrentSubtopic({
+      title: '',
+      content: '',
+      keywords: []
+    });
+    setCurrentKeyword({ word: '', definition: '' });
+  };
+
   // ============ FILE HANDLING ============
 
   const handleFileChange = (e) => {
@@ -259,6 +277,25 @@ function AdminDashboard() {
 
   // ============ CONTENT MANAGEMENT ============
 
+  const handleEditContent = (item) => {
+    setEditingContentId(item._id);
+    setContentForm({
+      title: item.title,
+      type: item.type,
+      subject: item.subject,
+      grade: item.grade,
+      description: item.description || '',
+      topic: item.topic || '',
+      subtopics: item.subtopics || [],
+      file: null, // Keep null to indicate no new file unless user selects one
+      linkUrl: item.linkUrl || '',
+      duration: item.duration || ''
+    });
+    setSelectedFileName(item.fileName || '');
+    setShowContentForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleContentSubmit = async (e) => {
     e.preventDefault();
     
@@ -279,16 +316,10 @@ function AdminDashboard() {
         alert('Please select a grade');
         return;
       }
-      
-      if (contentForm.type === 'note') {
-        if (contentForm.subtopics.length === 0) {
-          alert('Please add at least one subtopic');
-          return;
-        }
-        if (!contentForm.topic.trim()) {
-          alert('Please enter the main topic');
-          return;
-        }
+
+      if (contentForm.type === 'note' && !contentForm.topic.trim()) {
+        alert('Please enter the Main Topic / Chapter');
+        return;
       }
       
       if ((contentForm.type === 'video' || contentForm.type === 'audio') && !contentForm.file) {
@@ -357,6 +388,7 @@ function AdminDashboard() {
       });
       setSelectedFileName('');
       setUploadProgress(0);
+      setEditingContentId(null);
       setCurrentSubtopic({ title: '', content: '', keywords: [] });
       setCurrentKeyword({ word: '', definition: '' });
       
@@ -400,8 +432,28 @@ function AdminDashboard() {
       grade: grade,
       fullName: 'Preview Mode'
     };
-    localStorage.setItem('student', JSON.stringify(previewStudent));
-    window.open('/', '_blank');
+
+    const newWindow = window.open('', '_blank');
+
+    if (newWindow) {
+      // To set sessionStorage in a new tab, we write a temporary document
+      // that executes a script and then redirects. This bridges the session gap.
+      newWindow.document.write(`
+        <html>
+          <head><title>Loading Preview...</title></head>
+          <body>
+            <p>Please wait, loading student preview...</p>
+            <script>
+              sessionStorage.setItem('student', '${JSON.stringify(previewStudent)}');
+              window.location.replace('/');
+            </script>
+          </body>
+        </html>
+      `);
+      newWindow.document.close();
+    } else {
+      alert('Popup blocked! Please allow popups for this site to use the preview feature.');
+    }
   };
 
   // ============ QUIZ MANAGEMENT ============
@@ -434,6 +486,23 @@ function AdminDashboard() {
     setQuizForm({ ...quizForm, questions: newQuestions });
   };
 
+  const handleEditQuiz = (quiz) => {
+    setEditingQuizId(quiz._id);
+    setQuizForm({
+      title: quiz.title,
+      subject: quiz.subject,
+      grade: quiz.grade,
+      description: quiz.description || '',
+      timeLimit: quiz.timeLimit,
+      attemptsAllowed: quiz.attemptsAllowed,
+      passingScore: quiz.passingScore,
+      dueDate: quiz.dueDate ? quiz.dueDate.split('T')[0] : '',
+      questions: quiz.questions || []
+    });
+    setShowQuizForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleQuizSubmit = async (e) => {
     e.preventDefault();
     
@@ -452,14 +521,20 @@ function AdminDashboard() {
         dueDate: quizForm.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
       };
 
-      const response = await api.post('/api/admin/quizzes', quizData);
-      alert(`✅ Quiz created successfully for Grade ${quizForm.grade} - ${quizForm.subject}`);
+      if (editingQuizId) {
+        await api.put(`/api/admin/quizzes/${editingQuizId}`, quizData);
+        alert(`✅ Quiz updated successfully for Grade ${quizForm.grade} - ${quizForm.subject}`);
+      } else {
+        await api.post('/api/admin/quizzes', quizData);
+        alert(`✅ Quiz created successfully for Grade ${quizForm.grade} - ${quizForm.subject}`);
+      }
       
       setShowQuizForm(false);
       setQuizForm({
         title: '', subject: '', grade: 4, description: '',
         timeLimit: 30, attemptsAllowed: 1, passingScore: 50, dueDate: '', questions: []
       });
+      setEditingQuizId(null);
       
       fetchQuizzes();
       fetchDashboardStats();
@@ -500,6 +575,31 @@ function AdminDashboard() {
         console.error('Error deleting student:', error);
         alert('Error deleting student');
       }
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      alert('New passwords do not match');
+      return;
+    }
+    if (passwordForm.newPassword.length < 6) {
+      alert('Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      await api.post('/api/admin/change-password', {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
+      alert('Password changed successfully');
+      setShowPasswordModal(false);
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error) {
+      console.error('Error changing password:', error);
+      alert('Error changing password: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -570,6 +670,7 @@ function AdminDashboard() {
               setSelectedFileName('');
               setCurrentSubtopic({ title: '', content: '', keywords: [] });
               setCurrentKeyword({ word: '', definition: '' });
+              setEditingContentId(null);
             }
           }}
         >
@@ -579,7 +680,7 @@ function AdminDashboard() {
 
       {showContentForm && (
         <form onSubmit={handleContentSubmit} className="content-form">
-          <h4>Add New Resource</h4>
+          <h4>{editingContentId ? 'Edit Resource' : 'Add New Resource'}</h4>
           
           <div className="form-row">
             <select
@@ -751,14 +852,14 @@ function AdminDashboard() {
                   <div className="form-row">
                     <input
                       type="text"
-                      placeholder="Subtopic Title *"
+                      placeholder="Subtopic Title"
                       value={currentSubtopic.title}
                       onChange={(e) => setCurrentSubtopic({...currentSubtopic, title: e.target.value})}
                     />
                   </div>
                   <div className="form-row">
                     <textarea
-                      placeholder="Subtopic Content / Explanation *"
+                      placeholder="Subtopic Content / Explanation"
                       value={currentSubtopic.content}
                       onChange={(e) => setCurrentSubtopic({...currentSubtopic, content: e.target.value})}
                       rows="4"
@@ -770,6 +871,13 @@ function AdminDashboard() {
                     className="btn-add"
                   >
                     + Add Subtopic
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={handleClearSubtopic}
+                    style={{ marginLeft: '10px', padding: '8px 16px', backgroundColor: '#95a5a6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Clear
                   </button>
                 </div>
 
@@ -833,7 +941,7 @@ function AdminDashboard() {
             className="btn-submit"
             disabled={uploading}
           >
-            {uploading ? 'Uploading...' : 'Upload Resource'}
+            {uploading ? 'Uploading...' : (editingContentId ? 'Update Resource' : 'Upload Resource')}
           </button>
         </form>
       )}
@@ -926,6 +1034,13 @@ function AdminDashboard() {
                         👁️ Preview
                       </button>
                       <button 
+                        onClick={() => handleEditContent(item)}
+                        className="btn-edit"
+                        style={{ backgroundColor: '#f39c12', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '5px' }}
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button 
                         onClick={() => handleDeleteContent(item._id)}
                         className="btn-delete"
                       >
@@ -957,6 +1072,7 @@ function AdminDashboard() {
                 dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                 questions: []
               });
+              setEditingQuizId(null);
             }
           }}
         >
@@ -966,7 +1082,7 @@ function AdminDashboard() {
 
       {showQuizForm && (
         <form onSubmit={handleQuizSubmit} className="quiz-form">
-          <h4>Create New Quiz</h4>
+          <h4>{editingQuizId ? 'Edit Quiz' : 'Create New Quiz'}</h4>
           
           <div className="form-row">
             <input
@@ -1136,7 +1252,7 @@ function AdminDashboard() {
             className="btn-submit"
             disabled={quizForm.questions.length === 0}
           >
-            Create Quiz
+            {editingQuizId ? 'Update Quiz' : 'Create Quiz'}
           </button>
         </form>
       )}
@@ -1172,6 +1288,13 @@ function AdminDashboard() {
                 className="btn-view"
               >
                 View Results
+              </button>
+              <button 
+                onClick={() => handleEditQuiz(quiz)}
+                className="btn-edit"
+                style={{ backgroundColor: '#f39c12', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '5px' }}
+              >
+                ✏️ Edit
               </button>
               <button 
                 onClick={() => handlePreviewAsStudent(quiz.grade)}
@@ -1288,13 +1411,78 @@ function AdminDashboard() {
     </div>
   );
 
+  const renderPasswordModal = () => (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+      justifyContent: 'center', alignItems: 'center', zIndex: 1000
+    }}>
+      <div style={{
+        backgroundColor: 'white', padding: '2rem', borderRadius: '8px',
+        width: '100%', maxWidth: '400px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+      }}>
+        <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Change Password</h3>
+        <form onSubmit={handlePasswordChange}>
+          <div className="form-row">
+            <label style={{ display: 'block', marginBottom: '5px' }}>Current Password</label>
+            <input 
+              type="password" 
+              value={passwordForm.currentPassword}
+              onChange={e => setPasswordForm({...passwordForm, currentPassword: e.target.value})}
+              required
+              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+            />
+          </div>
+          <div className="form-row" style={{ marginTop: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '5px' }}>New Password</label>
+            <input 
+              type="password" 
+              value={passwordForm.newPassword}
+              onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})}
+              required
+              minLength={6}
+              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+            />
+          </div>
+          <div className="form-row" style={{ marginTop: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '5px' }}>Confirm New Password</label>
+            <input 
+              type="password" 
+              value={passwordForm.confirmPassword}
+              onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})}
+              required
+              minLength={6}
+              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+            />
+          </div>
+          <div style={{ marginTop: '25px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+            <button type="button" onClick={() => setShowPasswordModal(false)} style={{ padding: '8px 16px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
+            <button type="submit" className="btn-primary" style={{ padding: '8px 16px' }}>Update Password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
   return (
     <div className="admin-dashboard">
       <div className="dashboard-header">
         <h2>Admin Dashboard</h2>
-        <button onClick={handleLogout} className="btn-logout">
-          🚪 Logout
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            onClick={() => setShowPasswordModal(true)} 
+            style={{ 
+              backgroundColor: '#4a90e2', color: 'white', border: 'none', 
+              padding: '8px 16px', borderRadius: '4px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '5px'
+            }}
+          >
+            🔑 Change Password
+          </button>
+          <button onClick={handleLogout} className="btn-logout">
+            🚪 Logout
+          </button>
+        </div>
       </div>
       
       <div className="dashboard-tabs">
@@ -1336,6 +1524,7 @@ function AdminDashboard() {
           </>
         )}
       </div>
+      {showPasswordModal && renderPasswordModal()}
     </div>
   );
 }

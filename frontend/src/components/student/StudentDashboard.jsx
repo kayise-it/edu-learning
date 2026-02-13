@@ -29,66 +29,38 @@ function StudentDashboard() {
   const [recentWords, setRecentWords] = useState([]);
   const [showPronunciationTool, setShowPronunciationTool] = useState(true);
 
-  // Initialize speech synthesis and load voices - DEFAULT TO FEMALE VOICE
+  // Initialize speech synthesis and load voices
   useEffect(() => {
     if (window.speechSynthesis) {
-      // Load voices
       const loadVoices = () => {
         const voices = window.speechSynthesis.getVoices();
         
-        // Filter for English voices
         const englishVoices = voices.filter(voice => 
           voice.lang.includes('en-') || voice.lang.includes('en_US') || voice.lang.includes('en_GB')
         );
         
         setAvailableVoices(englishVoices);
         
-        // ----- PREFER FEMALE VOICES -----
         if (englishVoices.length > 0) {
-          // Priority 1: Google UK English Female (most natural female voice)
           let femaleVoice = englishVoices.find(voice => 
             voice.name.includes('Google UK English Female') || 
-            voice.name.includes('Google US English Female')
+            voice.name.includes('Google US English Female') ||
+            voice.name.includes('Zira') || 
+            voice.name.includes('Samantha') ||
+            voice.name.includes('Female')
           );
           
-          // Priority 2: Microsoft Zira (Windows female voice)
-          if (!femaleVoice) {
-            femaleVoice = englishVoices.find(voice => 
-              voice.name.includes('Zira') || 
-              voice.name.includes('Hazel') || 
-              voice.name.includes('Susan') || 
-              voice.name.includes('Female')
-            );
-          }
-          
-          // Priority 3: Samantha (macOS female voice)
-          if (!femaleVoice) {
-            femaleVoice = englishVoices.find(voice => 
-              voice.name.includes('Samantha')
-            );
-          }
-          
-          // Priority 4: Any voice with 'en-US' or 'en-GB' (prefer US)
-          if (!femaleVoice) {
-            femaleVoice = englishVoices.find(voice => 
-              voice.lang.includes('en-US')
-            );
-          }
-          
-          // Set the selected voice - default to female if found, otherwise first voice
           setSelectedVoice(femaleVoice ? femaleVoice.name : englishVoices[0].name);
         }
       };
 
       loadVoices();
       
-      // Chrome loads voices asynchronously
       if (window.speechSynthesis.onvoiceschanged !== undefined) {
         window.speechSynthesis.onvoiceschanged = loadVoices;
       }
     }
 
-    // Load recent words from localStorage
     const saved = localStorage.getItem('recentPronunciationWords');
     if (saved) {
       setRecentWords(JSON.parse(saved));
@@ -102,7 +74,7 @@ function StudentDashboard() {
     }
   }, [recentWords]);
 
-  // Handle text-to-speech pronunciation - WITH FEMALE VOICE PRIORITY
+  // Handle text-to-speech pronunciation
   const handlePronounce = () => {
     if (!pronunciationWord.trim()) {
       alert('Please enter a word to pronounce');
@@ -110,24 +82,20 @@ function StudentDashboard() {
     }
 
     try {
-      // Stop any current speech
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
 
       const utterance = new SpeechSynthesisUtterance(pronunciationWord);
       
-      // Set selected voice (should be female by default)
       if (selectedVoice) {
         const voice = availableVoices.find(v => v.name === selectedVoice);
         if (voice) utterance.voice = voice;
       }
       
-      // Set rate and pitch
       utterance.rate = speechRate;
       utterance.pitch = speechPitch;
       
-      // Event handlers
       utterance.onstart = () => {
         setIsSpeaking(true);
       };
@@ -135,7 +103,6 @@ function StudentDashboard() {
       utterance.onend = () => {
         setIsSpeaking(false);
         
-        // Add to recent words
         const word = pronunciationWord.trim();
         if (word && !recentWords.includes(word)) {
           setRecentWords(prev => [word, ...prev].slice(0, 10));
@@ -189,13 +156,26 @@ function StudentDashboard() {
 
   // Get student info from localStorage or session
   useEffect(() => {
-    const studentData = JSON.parse(localStorage.getItem('student') || sessionStorage.getItem('student'));
-    if (studentData) {
-      setStudent(studentData);
-      const grade = studentData.grade || 8;
-      setSelectedGrade(grade);
-      fetchContent(grade);
-      fetchQuizzes(grade);
+    try {
+      const storedData = localStorage.getItem('student') || sessionStorage.getItem('student');
+      // Check if storedData is valid and not the string "undefined"
+      if (storedData && storedData !== "undefined") {
+        const studentData = JSON.parse(storedData);
+        if (studentData) {
+          setStudent(studentData);
+          const grade = studentData.grade || 8;
+          setSelectedGrade(grade);
+          fetchContent(grade);
+          fetchQuizzes(grade, studentData);
+        } else {
+          navigate('/');
+        }
+      } else {
+        navigate('/');
+      }
+    } catch (error) {
+      console.error("Error loading student data:", error);
+      navigate('/');
     }
     setLoading(false);
   }, []);
@@ -211,9 +191,10 @@ function StudentDashboard() {
   };
 
   // Fetch quizzes based on grade
-  const fetchQuizzes = async (grade) => {
+  const fetchQuizzes = async (grade, currentStudent = student) => {
     try {
-      const response = await api.get(`/api/student/quizzes?grade=${grade}&studentId=${student?._id || student?.id}`);
+      const studentId = currentStudent?._id || currentStudent?.id;
+      const response = await api.get(`/api/student/quizzes?grade=${grade}&studentId=${studentId}`);
       setQuizzes(response.data);
     } catch (error) {
       console.error('Error fetching quizzes:', error);
@@ -578,14 +559,18 @@ function StudentDashboard() {
                     ))}
                   </div>
                   
-                  {note.subtopics[activeSubtopic]?.keywords?.length > 0 && (
+                  {/* Keywords section with pronunciation buttons */}
+                  {note.subtopics[activeSubtopic]?.keywords && 
+                   note.subtopics[activeSubtopic].keywords.length > 0 && (
                     <div className="keyword-section">
                       <h3>🔑 Keywords & Definitions</h3>
                       <div className="keyword-grid">
                         {note.subtopics[activeSubtopic].keywords.map((kw, idx) => (
                           <div key={idx} className="keyword-card">
-                            <span className="keyword-term">{kw.word}</span>
-                            <span className="keyword-def">{kw.definition}</span>
+                            <div className="keyword-content">
+                              <span className="keyword-term">{kw.word}</span>
+                              <span className="keyword-def">{kw.definition}</span>
+                            </div>
                             <button
                               className="btn-pronounce-small"
                               onClick={() => {
@@ -677,7 +662,7 @@ function StudentDashboard() {
         </div>
       </div>
 
-      {/* PRONUNCIATION TOOL - WITH FEMALE VOICE DEFAULT */}
+      {/* Pronunciation Tool */}
       {renderPronunciationTool()}
 
       {/* Content Filters */}
@@ -773,10 +758,11 @@ function StudentDashboard() {
                     </div>
                   )}
 
-                  {/* Subtopics preview for notes */}
+                  {/* Subtopics preview for notes with keyword count */}
                   {item.type === 'note' && item.subtopics?.length > 0 && (
                     <div className="subtopics-preview">
                       <span>📚 {item.subtopics.length} subtopics</span>
+                      <span>🔑 {item.subtopics.reduce((acc, sub) => acc + (sub.keywords?.length || 0), 0)} keywords</span>
                     </div>
                   )}
 

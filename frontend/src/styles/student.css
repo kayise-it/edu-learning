@@ -1757,6 +1757,495 @@ body {
 }
 
 /* ========================================
+   READ ALOUD FEATURE STYLES
+   Google-style voice over with word highlighting
+   ======================================== */
+
+.read-aloud-controls {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  margin: 1.5rem 0;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.read-aloud-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.read-aloud-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.read-aloud-toggle {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-full);
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 26px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.3);
+  transition: 0.3s;
+  border-radius: 34px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 2px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+  background-color: var(--success);
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(26px);
+}
+
+.toggle-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+.read-aloud-main-controls {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-read-aloud {
+  background: white;
+  color: var(--primary);
+  border: none;
+  padding: 0.875rem 2rem;
+  border-radius: var(--radius-full);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 180px;
+  justify-content: center;
+}
+
+.btn-read-aloud:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  filter: brightness(105%);
+}
+
+.btn-read-aloud.active {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-read-aloud.active:hover {
+  background: var(--danger-dark);
+}
+
+.btn-stop-read-aloud {
+  background: var(--warning);
+  color: white;
+  border: none;
+  padding: 0.875rem 2rem;
+  border-radius: var(--radius-full);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.btn-stop-read-aloud:hover {
+  background: #f57c00;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.read-aloud-settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.setting-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.setting-group select {
+  padding: 0.625rem;
+  border-radius: var(--radius);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.setting-group select:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.setting-group select option {
+  background: var(--primary);
+  color: white;
+}
+
+.setting-group input[type="range"] {
+  width: 100%;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.2);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.setting-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: var(--shadow);
+}
+
+.setting-group input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  background: var(--warning);
+}
+
+/* Word highlighting container */
+.word-highlight-container {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.word-highlight-scroll {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  line-height: 1.8;
+}
+
+.word-highlight {
+  padding: 0.25rem 0.375rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.word-highlight.read {
+  opacity: 0.6;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.word-highlight.active {
+  background: #ffeb3b;
+  color: #333;
+  transform: scale(1.05);
+  box-shadow: 0 2px 12px rgba(255, 235, 59, 0.5);
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Scrollbar styling for word container */
+.word-highlight-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.word-highlight-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.word-highlight-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  transition: var(--transition);
+}
+
+.word-highlight-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Enhanced subtopic list for read-aloud */
+.subtopic-list li.active {
+  position: relative;
+}
+
+.subtopic-list li.active::after {
+  content: "🔊";
+  margin-left: 0.5rem;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Reading mode indicator */
+.reading-mode-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(102, 126, 234, 0.1);
+  padding: 0.375rem 1rem;
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--primary);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  margin-bottom: 1rem;
+}
+
+.reading-mode-indicator.active {
+  background: var(--primary);
+  color: white;
+  animation: glow 2s infinite;
+}
+
+@keyframes glow {
+  0% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7); }
+  50% { box-shadow: 0 0 10px 5px rgba(102, 126, 234, 0.3); }
+  100% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7); }
+}
+
+/* Responsive adjustments for read-aloud */
+@media (max-width: 768px) {
+  .read-aloud-settings {
+    grid-template-columns: 1fr;
+  }
+  
+  .read-aloud-main-controls {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .btn-read-aloud,
+  .btn-stop-read-aloud {
+    width: 100%;
+    min-width: unset;
+  }
+  
+  .read-aloud-toggle {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+  }
+  
+  .word-highlight-container {
+    max-height: 150px;
+  }
+  
+  .word-highlight {
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .read-aloud-controls {
+    padding: 1rem;
+  }
+  
+  .read-aloud-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .setting-group select,
+  .setting-group input[type="range"] {
+    width: 100%;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .read-aloud-controls {
+    background: #000;
+    border: 2px solid white;
+  }
+  
+  .word-highlight.active {
+    background: yellow;
+    color: black;
+    border: 2px solid black;
+    outline: 2px solid black;
+  }
+  
+  .toggle-slider {
+    border: 2px solid white;
+  }
+  
+  .btn-read-aloud,
+  .btn-stop-read-aloud {
+    border: 2px solid white;
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .read-aloud-controls,
+  .word-highlight,
+  .btn-read-aloud,
+  .btn-stop-read-aloud,
+  .subtopic-list li {
+    animation: none;
+    transition: none;
+  }
+  
+  .subtopic-list li.active::after {
+    animation: none;
+  }
+  
+  .reading-mode-indicator.active {
+    animation: none;
+  }
+}
+
+/* Print styles */
+@media print {
+  .read-aloud-controls {
+    display: none;
+  }
+}
+
+/* Accessibility focus styles */
+.btn-read-aloud:focus-visible,
+.btn-stop-read-aloud:focus-visible,
+.setting-group select:focus-visible,
+.setting-group input:focus-visible,
+.btn-pronounce-small:focus-visible {
+  outline: 3px solid white;
+  outline-offset: 3px;
+}
+
+/* Loading state for read-aloud */
+.read-aloud-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+}
+
+.read-aloud-loading-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Voice wave animation */
+.voice-wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 30px;
+}
+
+.voice-wave span {
+  width: 4px;
+  height: 100%;
+  background: white;
+  border-radius: 4px;
+  animation: wave 1s ease-in-out infinite;
+}
+
+.voice-wave span:nth-child(2) { animation-delay: 0.2s; }
+.voice-wave span:nth-child(3) { animation-delay: 0.4s; }
+.voice-wave span:nth-child(4) { animation-delay: 0.3s; }
+.voice-wave span:nth-child(5) { animation-delay: 0.1s; }
+
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.5); }
+  50% { transform: scaleY(1.5); }
+}
+
+/* ========================================
    RESPONSIVE STYLES
    ======================================== */
 

@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
@@ -5,9 +6,6 @@ const path = require('path');
 
 const app = express();
 const PORT = 4000;
-
-// Connect to MongoDB
-connectDB();
 
 // Middlewares - ORDER MATTERS!
 app.use(cors());
@@ -46,7 +44,6 @@ async function loadUsersFromMongoDB() {
     console.error('❌ Error loading users from MongoDB:', error);
   }
 }
-loadUsersFromMongoDB();
 
 // ============= ROUTES =============
 
@@ -390,50 +387,66 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Internal server error" });
 });
 
-// ============= START SERVER =============
-app.listen(PORT, () => {
-  console.log("\n" + "=".repeat(60));
-  console.log(`✅✅✅ SERVER RUNNING ON http://localhost:${PORT}`);
-  console.log("=".repeat(60));
-  console.log("\n📝 AVAILABLE ENDPOINTS:");
-  console.log("   GET  → http://localhost:4000/");
-  console.log("   POST → http://localhost:4000/register");
-  console.log("   POST → http://localhost:4000/login");
-  console.log("   POST → http://localhost:4000/forgot-pin/verify");
-  console.log("   POST → http://localhost:4000/forgot-pin/reset");
-  console.log("   GET  → http://localhost:4000/users");
-  console.log("   DELETE → http://localhost:4000/users");
-  
-  console.log("\n👑 ADMIN API ENDPOINTS:");
-  console.log("   POST → http://localhost:4000/api/admin/login");
-  console.log("   GET  → http://localhost:4000/api/admin/stats");
-  console.log("   GET  → http://localhost:4000/api/admin/students");
-  console.log("   DELETE → http://localhost:4000/api/admin/students/:id");
-  console.log("   POST → http://localhost:4000/api/admin/content");
-  console.log("   GET  → http://localhost:4000/api/admin/content");
-  console.log("   DELETE → http://localhost:4000/api/admin/content/:id");
-  console.log("   POST → http://localhost:4000/api/admin/quizzes");
-  console.log("   GET  → http://localhost:4000/api/admin/quizzes");
-  console.log("   GET  → http://localhost:4000/api/admin/quizzes/:id");
-  console.log("   PUT  → http://localhost:4000/api/admin/quizzes/:id");
-  console.log("   DELETE → http://localhost:4000/api/admin/quizzes/:id");
-  console.log("   GET  → http://localhost:4000/api/admin/quizzes/:id/results");
+// ============= START SERVER (ASYNC) =============
+const startServer = async () => {
+  try {
+    // 1. Connect to MongoDB and wait for it to finish
+    await connectDB();
 
-  console.log("\n🎓 STUDENT API ENDPOINTS:");
-  console.log("   POST → http://localhost:4000/api/student/login");
-  console.log("   POST → http://localhost:4000/api/student/register");
-  console.log("   GET  → http://localhost:4000/api/student/content");
-  console.log("   PUT  → http://localhost:4000/api/student/content/:id/view");
-  console.log("   PUT  → http://localhost:4000/api/student/content/:id/download");
-  console.log("   GET  → http://localhost:4000/api/student/quizzes");
-  console.log("   GET  → http://localhost:4000/api/student/quizzes/:id/take");
-  console.log("   POST → http://localhost:4000/api/student/quizzes/:id/submit");
-  console.log("   POST → http://localhost:4000/api/student/quizzes/:id/auto-submit");
-  console.log("   GET  → http://localhost:4000/api/student/:studentId/history");
-  console.log("   GET  → http://localhost:4000/api/student/:studentId/dashboard");
-  
-  console.log("\n" + "=".repeat(60));
-  console.log("\n🔥🔥🔥 MONGODB IS ACTIVE - ALL NEW REGISTRATIONS ARE PERMANENT!");
-  console.log("📚 Loaded", users.length, "existing users from database");
-  console.log("\n" + "=".repeat(60));
-});
+    // 2. Load initial data from MongoDB
+    await loadUsersFromMongoDB();
+
+    // 3. Start the Express server
+    app.listen(PORT, () => {
+      console.log("\n" + "=".repeat(60));
+      console.log(`✅✅✅ SERVER RUNNING ON http://localhost:${PORT}`);
+      console.log("=".repeat(60));
+      console.log("\n📝 AVAILABLE ENDPOINTS:");
+      console.log("   GET  → http://localhost:4000/");
+      console.log("   POST → http://localhost:4000/register");
+      console.log("   POST → http://localhost:4000/login");
+      console.log("   POST → http://localhost:4000/forgot-pin/verify");
+      console.log("   POST → http://localhost:4000/forgot-pin/reset");
+      console.log("   GET  → http://localhost:4000/users");
+      console.log("   DELETE → http://localhost:4000/users");
+      
+      console.log("\n👑 ADMIN API ENDPOINTS:");
+      console.log("   POST → http://localhost:4000/api/admin/login");
+      console.log("   GET  → http://localhost:4000/api/admin/stats");
+      console.log("   GET  → http://localhost:4000/api/admin/students");
+      console.log("   DELETE → http://localhost:4000/api/admin/students/:id");
+      console.log("   POST → http://localhost:4000/api/admin/content");
+      console.log("   GET  → http://localhost:4000/api/admin/content");
+      console.log("   DELETE → http://localhost:4000/api/admin/content/:id");
+      console.log("   POST → http://localhost:4000/api/admin/quizzes");
+      console.log("   GET  → http://localhost:4000/api/admin/quizzes");
+      console.log("   GET  → http://localhost:4000/api/admin/quizzes/:id");
+      console.log("   PUT  → http://localhost:4000/api/admin/quizzes/:id");
+      console.log("   DELETE → http://localhost:4000/api/admin/quizzes/:id");
+      console.log("   GET  → http://localhost:4000/api/admin/quizzes/:id/results");
+
+      console.log("\n🎓 STUDENT API ENDPOINTS:");
+      console.log("   POST → http://localhost:4000/api/student/login");
+      console.log("   POST → http://localhost:4000/api/student/register");
+      console.log("   GET  → http://localhost:4000/api/student/content");
+      console.log("   PUT  → http://localhost:4000/api/student/content/:id/view");
+      console.log("   PUT  → http://localhost:4000/api/student/content/:id/download");
+      console.log("   GET  → http://localhost:4000/api/student/quizzes");
+      console.log("   GET  → http://localhost:4000/api/student/quizzes/:id/take");
+      console.log("   POST → http://localhost:4000/api/student/quizzes/:id/submit");
+      console.log("   POST → http://localhost:4000/api/student/quizzes/:id/auto-submit");
+      console.log("   GET  → http://localhost:4000/api/student/:studentId/history");
+      console.log("   GET  → http://localhost:4000/api/student/:studentId/dashboard");
+      
+      console.log("\n" + "=".repeat(60));
+      console.log("\n🔥🔥🔥 MONGODB IS ACTIVE - ALL NEW REGISTRATIONS ARE PERMANENT!");
+      console.log("📚 Loaded", users.length, "existing users from database");
+      console.log("\n" + "=".repeat(60));
+    });
+  } catch (error) {
+    console.error("❌ Server failed to start:", error);
+    process.exit(1);
+  }
+};
+
+startServer();

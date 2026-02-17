@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import "../../styles/student.css";
@@ -19,6 +19,23 @@ function StudentDashboard() {
   const [viewingNote, setViewingNote] = useState(null);
   const [activeSubtopic, setActiveSubtopic] = useState(0);
   
+  // ============ READ ALOUD FEATURE (GOOGLE-STYLE VOICE OVER) ============
+  const [isReadingAloud, setIsReadingAloud] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [readAloudText, setReadAloudText] = useState('');
+  const [readAloudVoices, setReadAloudVoices] = useState([]);
+  const [selectedReadAloudVoice, setSelectedReadAloudVoice] = useState('');
+  const [readAloudRate, setReadAloudRate] = useState(1);
+  const [readAloudPitch, setReadAloudPitch] = useState(1);
+  const [readAloudVolume, setReadAloudVolume] = useState(1);
+  const [currentWordIndex, setCurrentWordIndex] = useState(-1);
+  const [words, setWords] = useState([]);
+  const [showReadAloudControls, setShowReadAloudControls] = useState(false);
+  const [isReadingFullNote, setIsReadingFullNote] = useState(false);
+  
+  const utteranceRef = useRef(null);
+  const textContainerRef = useRef(null);
+  
   // ============ TEXT-TO-SPEECH PRONUNCIATION TOOL ============
   const [pronunciationWord, setPronunciationWord] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -29,7 +46,7 @@ function StudentDashboard() {
   const [recentWords, setRecentWords] = useState([]);
   const [showPronunciationTool, setShowPronunciationTool] = useState(true);
 
-  // Initialize speech synthesis and load voices
+  // Initialize speech synthesis and load voices for both features
   useEffect(() => {
     if (window.speechSynthesis) {
       const loadVoices = () => {
@@ -40,8 +57,10 @@ function StudentDashboard() {
         );
         
         setAvailableVoices(englishVoices);
+        setReadAloudVoices(englishVoices);
         
         if (englishVoices.length > 0) {
+          // Set default female voice for pronunciation tool
           let femaleVoice = englishVoices.find(voice => 
             voice.name.includes('Google UK English Female') || 
             voice.name.includes('Google US English Female') ||
@@ -51,6 +70,14 @@ function StudentDashboard() {
           );
           
           setSelectedVoice(femaleVoice ? femaleVoice.name : englishVoices[0].name);
+          
+          // Set default voice for read aloud (prefer natural sounding)
+          let naturalVoice = englishVoices.find(voice => 
+            voice.name.includes('Google') || 
+            voice.name.includes('Microsoft') ||
+            voice.name.includes('Samantha')
+          );
+          setSelectedReadAloudVoice(naturalVoice ? naturalVoice.name : englishVoices[0].name);
         }
       };
 
@@ -65,6 +92,13 @@ function StudentDashboard() {
     if (saved) {
       setRecentWords(JSON.parse(saved));
     }
+
+    // Cleanup on unmount
+    return () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
   }, []);
 
   // Save recent words to localStorage
@@ -73,83 +107,6 @@ function StudentDashboard() {
       localStorage.setItem('recentPronunciationWords', JSON.stringify(recentWords.slice(0, 10)));
     }
   }, [recentWords]);
-
-  // Handle text-to-speech pronunciation
-  const handlePronounce = () => {
-    if (!pronunciationWord.trim()) {
-      alert('Please enter a word to pronounce');
-      return;
-    }
-
-    try {
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-
-      const utterance = new SpeechSynthesisUtterance(pronunciationWord);
-      
-      if (selectedVoice) {
-        const voice = availableVoices.find(v => v.name === selectedVoice);
-        if (voice) utterance.voice = voice;
-      }
-      
-      utterance.rate = speechRate;
-      utterance.pitch = speechPitch;
-      
-      utterance.onstart = () => {
-        setIsSpeaking(true);
-      };
-      
-      utterance.onend = () => {
-        setIsSpeaking(false);
-        
-        const word = pronunciationWord.trim();
-        if (word && !recentWords.includes(word)) {
-          setRecentWords(prev => [word, ...prev].slice(0, 10));
-        }
-      };
-      
-      utterance.onerror = (event) => {
-        console.error('Speech error:', event);
-        setIsSpeaking(false);
-        alert('Error pronouncing word. Please try again.');
-      };
-      
-      window.speechSynthesis.speak(utterance);
-    } catch (error) {
-      console.error('TTS Error:', error);
-      alert('Speech synthesis is not supported in your browser.');
-    }
-  };
-
-  // Handle stop speaking
-  const handleStopSpeaking = () => {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-    }
-  };
-
-  // Handle voice change
-  const handleVoiceChange = (e) => {
-    setSelectedVoice(e.target.value);
-  };
-
-  // Handle rate change
-  const handleRateChange = (e) => {
-    setSpeechRate(parseFloat(e.target.value));
-  };
-
-  // Handle pitch change
-  const handlePitchChange = (e) => {
-    setSpeechPitch(parseFloat(e.target.value));
-  };
-
-  // Clear recent words
-  const handleClearRecent = () => {
-    setRecentWords([]);
-    localStorage.removeItem('recentPronunciationWords');
-  };
 
   // ALL GRADES from 4 to 12
   const allGrades = [4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -207,6 +164,7 @@ function StudentDashboard() {
     setSelectedSubject('all');
     setSelectedType('all');
     setViewingNote(null);
+    stopReadAloud();
     fetchContent(grade);
     fetchQuizzes(grade);
   };
@@ -227,8 +185,11 @@ function StudentDashboard() {
     } else if (item.type === 'link') {
       window.open(item.linkUrl, '_blank');
     } else if (item.type === 'note') {
+      stopReadAloud();
       setViewingNote(item);
       setActiveSubtopic(0);
+      setShowReadAloudControls(true);
+      setIsReadingFullNote(false);
     }
   };
 
@@ -342,13 +303,325 @@ function StudentDashboard() {
       setPlayingAudio(null);
     }
     
+    stopReadAloud();
     navigate('/');
   };
 
   // Handle back from note viewer
   const handleCloseNoteViewer = () => {
+    stopReadAloud();
     setViewingNote(null);
     setActiveSubtopic(0);
+    setShowReadAloudControls(false);
+  };
+
+  // ============ READ ALOUD FUNCTIONS ============
+  
+  // Prepare text for reading from current note
+  const prepareNoteText = (note, subtopicIndex = activeSubtopic) => {
+    if (!note) return '';
+    
+    let textToRead = `${note.title}. `;
+    
+    if (note.description) {
+      textToRead += `${note.description}. `;
+    }
+    
+    if (note.subtopics && note.subtopics.length > 0) {
+      if (isReadingFullNote) {
+        // Read all subtopics
+        note.subtopics.forEach((sub, idx) => {
+          textToRead += `${sub.title}. ${sub.content} `;
+          
+          // Add keywords
+          if (sub.keywords && sub.keywords.length > 0) {
+            textToRead += `Keywords: `;
+            sub.keywords.forEach(kw => {
+              textToRead += `${kw.word} means ${kw.definition}. `;
+            });
+          }
+        });
+      } else {
+        // Read only current subtopic
+        const currentSub = note.subtopics[subtopicIndex];
+        if (currentSub) {
+          textToRead += `${currentSub.title}. ${currentSub.content} `;
+          
+          if (currentSub.keywords && currentSub.keywords.length > 0) {
+            textToRead += `Keywords: `;
+            currentSub.keywords.forEach(kw => {
+              textToRead += `${kw.word} means ${kw.definition}. `;
+            });
+          }
+        }
+      }
+    }
+    
+    return textToRead;
+  };
+
+  // Start reading aloud
+  const startReadAloud = () => {
+    if (!viewingNote) return;
+    
+    stopReadAloud();
+    
+    const text = prepareNoteText(viewingNote);
+    if (!text.trim()) {
+      alert('No text available to read.');
+      return;
+    }
+    
+    setReadAloudText(text);
+    
+    // Split text into words for highlighting
+    const wordArray = text.split(/(\s+)/).filter(word => word.trim().length > 0);
+    setWords(wordArray);
+    
+    try {
+      const utterance = new SpeechSynthesisUtterance(text);
+      
+      // Set voice
+      if (selectedReadAloudVoice) {
+        const voice = readAloudVoices.find(v => v.name === selectedReadAloudVoice);
+        if (voice) utterance.voice = voice;
+      }
+      
+      utterance.rate = readAloudRate;
+      utterance.pitch = readAloudPitch;
+      utterance.volume = readAloudVolume;
+      
+      // Word boundary event for highlighting
+      utterance.onboundary = (event) => {
+        if (event.name === 'word') {
+          // Calculate which word is being spoken
+          const charIndex = event.charIndex;
+          const textUpToChar = text.substring(0, charIndex);
+          const wordsUpToChar = textUpToChar.split(/\s+/).length;
+          setCurrentWordIndex(wordsUpToChar - 1);
+        }
+      };
+      
+      utterance.onstart = () => {
+        setIsReadingAloud(true);
+        setIsPaused(false);
+      };
+      
+      utterance.onpause = () => {
+        setIsPaused(true);
+      };
+      
+      utterance.onresume = () => {
+        setIsPaused(false);
+      };
+      
+      utterance.onend = () => {
+        setIsReadingAloud(false);
+        setIsPaused(false);
+        setCurrentWordIndex(-1);
+        utteranceRef.current = null;
+      };
+      
+      utterance.onerror = (event) => {
+        console.error('Read aloud error:', event);
+        setIsReadingAloud(false);
+        setIsPaused(false);
+        setCurrentWordIndex(-1);
+        utteranceRef.current = null;
+      };
+      
+      utteranceRef.current = utterance;
+      window.speechSynthesis.speak(utterance);
+      
+    } catch (error) {
+      console.error('TTS Error:', error);
+      alert('Speech synthesis is not supported in your browser.');
+    }
+  };
+
+  // Pause reading
+  const pauseReadAloud = () => {
+    if (window.speechSynthesis && utteranceRef.current) {
+      window.speechSynthesis.pause();
+      setIsPaused(true);
+    }
+  };
+
+  // Resume reading
+  const resumeReadAloud = () => {
+    if (window.speechSynthesis && utteranceRef.current) {
+      window.speechSynthesis.resume();
+      setIsPaused(false);
+    }
+  };
+
+  // Stop reading
+  const stopReadAloud = () => {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      setIsReadingAloud(false);
+      setIsPaused(false);
+      setCurrentWordIndex(-1);
+      utteranceRef.current = null;
+    }
+  };
+
+  // Toggle read aloud (play/pause)
+  const toggleReadAloud = () => {
+    if (isReadingAloud) {
+      if (isPaused) {
+        resumeReadAloud();
+      } else {
+        pauseReadAloud();
+      }
+    } else {
+      startReadAloud();
+    }
+  };
+
+  // Handle read aloud voice change
+  const handleReadAloudVoiceChange = (e) => {
+    setSelectedReadAloudVoice(e.target.value);
+    // If currently reading, restart with new voice
+    if (isReadingAloud) {
+      const wasPaused = isPaused;
+      stopReadAloud();
+      setTimeout(() => {
+        startReadAloud();
+        if (wasPaused) {
+          pauseReadAloud();
+        }
+      }, 100);
+    }
+  };
+
+  // Handle read aloud rate change
+  const handleReadAloudRateChange = (e) => {
+    const newRate = parseFloat(e.target.value);
+    setReadAloudRate(newRate);
+    
+    // If currently reading, restart with new rate
+    if (isReadingAloud) {
+      const wasPaused = isPaused;
+      stopReadAloud();
+      setTimeout(() => {
+        startReadAloud();
+        if (wasPaused) {
+          pauseReadAloud();
+        }
+      }, 100);
+    }
+  };
+
+  // Handle read aloud pitch change
+  const handleReadAloudPitchChange = (e) => {
+    const newPitch = parseFloat(e.target.value);
+    setReadAloudPitch(newPitch);
+    
+    // If currently reading, restart with new pitch
+    if (isReadingAloud) {
+      const wasPaused = isPaused;
+      stopReadAloud();
+      setTimeout(() => {
+        startReadAloud();
+        if (wasPaused) {
+          pauseReadAloud();
+        }
+      }, 100);
+    }
+  };
+
+  // Handle read aloud volume change
+  const handleReadAloudVolumeChange = (e) => {
+    const newVolume = parseFloat(e.target.value);
+    setReadAloudVolume(newVolume);
+    
+    // Update volume of current utterance if possible
+    if (utteranceRef.current) {
+      utteranceRef.current.volume = newVolume;
+    }
+  };
+
+  // Toggle between reading current subtopic or full note
+  const toggleReadFullNote = () => {
+    setIsReadingFullNote(!isReadingFullNote);
+    if (isReadingAloud) {
+      stopReadAloud();
+      setTimeout(() => startReadAloud(), 100);
+    }
+  };
+
+  // ============ PRONUNCIATION TOOL FUNCTIONS ============
+  
+  const handlePronounce = () => {
+    if (!pronunciationWord.trim()) {
+      alert('Please enter a word to pronounce');
+      return;
+    }
+
+    try {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+
+      const utterance = new SpeechSynthesisUtterance(pronunciationWord);
+      
+      if (selectedVoice) {
+        const voice = availableVoices.find(v => v.name === selectedVoice);
+        if (voice) utterance.voice = voice;
+      }
+      
+      utterance.rate = speechRate;
+      utterance.pitch = speechPitch;
+      
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+      };
+      
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        
+        const word = pronunciationWord.trim();
+        if (word && !recentWords.includes(word)) {
+          setRecentWords(prev => [word, ...prev].slice(0, 10));
+        }
+      };
+      
+      utterance.onerror = (event) => {
+        console.error('Speech error:', event);
+        setIsSpeaking(false);
+        alert('Error pronouncing word. Please try again.');
+      };
+      
+      window.speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.error('TTS Error:', error);
+      alert('Speech synthesis is not supported in your browser.');
+    }
+  };
+
+  const handleStopSpeaking = () => {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
+  const handleVoiceChange = (e) => {
+    setSelectedVoice(e.target.value);
+  };
+
+  const handleRateChange = (e) => {
+    setSpeechRate(parseFloat(e.target.value));
+  };
+
+  const handlePitchChange = (e) => {
+    setSpeechPitch(parseFloat(e.target.value));
+  };
+
+  const handleClearRecent = () => {
+    setRecentWords([]);
+    localStorage.removeItem('recentPronunciationWords');
   };
 
   // Filter content
@@ -360,6 +633,120 @@ function StudentDashboard() {
 
   // Get unique subjects
   const subjects = ['all', ...new Set(content.map(item => item.subject).filter(Boolean))];
+
+  // ============ RENDER READ ALOUD CONTROLS ============
+  const renderReadAloudControls = () => (
+    <div className="read-aloud-controls">
+      <div className="read-aloud-header">
+        <h3>🔊 Read Aloud</h3>
+        <div className="read-aloud-toggle">
+          <label className="toggle-switch">
+            <input 
+              type="checkbox" 
+              checked={isReadingFullNote} 
+              onChange={toggleReadFullNote}
+            />
+            <span className="toggle-slider"></span>
+          </label>
+          <span className="toggle-label">
+            {isReadingFullNote ? 'Reading Full Note' : 'Reading Current Subtopic'}
+          </span>
+        </div>
+      </div>
+      
+      <div className="read-aloud-main-controls">
+        <button 
+          className={`btn-read-aloud ${isReadingAloud ? 'active' : ''}`}
+          onClick={toggleReadAloud}
+        >
+          {isReadingAloud ? (isPaused ? '▶️ Resume' : '⏸️ Pause') : '🔊 Start Reading'}
+        </button>
+        
+        {isReadingAloud && (
+          <button 
+            className="btn-stop-read-aloud"
+            onClick={stopReadAloud}
+          >
+            ⏹️ Stop
+          </button>
+        )}
+      </div>
+      
+      <div className="read-aloud-settings">
+        <div className="setting-group">
+          <label>👤 Voice:</label>
+          <select 
+            value={selectedReadAloudVoice} 
+            onChange={handleReadAloudVoiceChange}
+            className="voice-select"
+          >
+            {readAloudVoices.map(voice => (
+              <option key={voice.name} value={voice.name}>
+                {voice.name.includes('Female') ? '👩 ' : '👨 '}{voice.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="setting-group">
+          <label>⚡ Speed: {readAloudRate.toFixed(1)}x</label>
+          <input
+            type="range"
+            min="0.5"
+            max="2"
+            step="0.1"
+            value={readAloudRate}
+            onChange={handleReadAloudRateChange}
+            className="slider"
+          />
+        </div>
+        
+        <div className="setting-group">
+          <label>🎵 Pitch: {readAloudPitch.toFixed(1)}</label>
+          <input
+            type="range"
+            min="0.5"
+            max="2"
+            step="0.1"
+            value={readAloudPitch}
+            onChange={handleReadAloudPitchChange}
+            className="slider"
+          />
+        </div>
+        
+        <div className="setting-group">
+          <label>🔊 Volume: {Math.round(readAloudVolume * 100)}%</label>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.1"
+            value={readAloudVolume}
+            onChange={handleReadAloudVolumeChange}
+            className="slider"
+          />
+        </div>
+      </div>
+      
+      {/* Word highlighting visualization */}
+      {isReadingAloud && words.length > 0 && (
+        <div className="word-highlight-container" ref={textContainerRef}>
+          <div className="word-highlight-scroll">
+            {words.map((word, index) => (
+              <span 
+                key={index} 
+                className={`word-highlight ${index === currentWordIndex ? 'active' : ''} ${
+                  index < currentWordIndex ? 'read' : ''
+                }`}
+              >
+                {word}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   // ============ RENDER PRONUNCIATION TOOL ============
   const renderPronunciationTool = () => (
@@ -499,6 +886,9 @@ function StudentDashboard() {
           </button>
         </div>
 
+        {/* Read Aloud Controls */}
+        {showReadAloudControls && renderReadAloudControls()}
+
         <div className="note-content-wrapper">
           <div className="note-sidebar">
             <h3>📑 Subtopics</h3>
@@ -507,7 +897,13 @@ function StudentDashboard() {
                 <li 
                   key={index} 
                   className={activeSubtopic === index ? 'active' : ''}
-                  onClick={() => setActiveSubtopic(index)}
+                  onClick={() => {
+                    setActiveSubtopic(index);
+                    if (isReadingAloud && !isReadingFullNote) {
+                      stopReadAloud();
+                      setTimeout(() => startReadAloud(), 100);
+                    }
+                  }}
                 >
                   {index + 1}. {sub.title}
                 </li>

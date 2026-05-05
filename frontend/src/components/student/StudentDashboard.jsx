@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { jsPDF } from "jspdf";
 import api from "../../services/api";
 import "../../styles/student.css";
 
@@ -244,38 +245,54 @@ function StudentDashboard() {
       await api.put(`/api/student/content/${item._id}/download`);
       
       if (item.type === 'note') {
-        let content = `${item.title}\n`;
-        content += `${'='.repeat(item.title.length)}\n\n`;
-        content += `Subject: ${item.subject}\n`;
-        content += `Grade: ${item.grade}\n`;
-        content += `Topic: ${item.topic || 'General'}\n\n`;
-        content += `Description: ${item.description || 'No description'}\n\n`;
-        content += `${'='.repeat(50)}\n\n`;
-        
+        const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+        let cursorY = 40;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const maxLineWidth = pageWidth - 80;
+
+        const addLines = (text) => {
+          const lines = doc.splitTextToSize(text, maxLineWidth);
+          lines.forEach(line => {
+            if (cursorY > 750) {
+              doc.addPage();
+              cursorY = 40;
+            }
+            doc.text(line, 40, cursorY);
+            cursorY += 16;
+          });
+        };
+
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        addLines(item.title);
+        cursorY += 8;
+
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        addLines(`Subject: ${item.subject}`);
+        addLines(`Grade: ${item.grade}`);
+        addLines(`Topic: ${item.topic || 'General'}`);
+        addLines(`Description: ${item.description || 'No description'}`);
+        addLines(' ');
+        addLines('Notes');
+        addLines('------------------------------------------------------------');
+        addLines(' ');
+
         item.subtopics?.forEach((sub, index) => {
-          content += `${index + 1}. ${sub.title}\n`;
-          content += `${'-'.repeat(sub.title.length + 3)}\n`;
-          content += `${sub.content}\n\n`;
-          
+          doc.setFont('helvetica', 'bold');
+          addLines(`${index + 1}. ${sub.title}`);
+          doc.setFont('helvetica', 'normal');
+          addLines(sub.content || '');
           if (sub.keywords?.length > 0) {
-            content += `KEYWORDS:\n`;
+            addLines('Keywords:');
             sub.keywords.forEach(kw => {
-              content += `  • ${kw.word}: ${kw.definition}\n`;
+              addLines(`• ${kw.word}: ${kw.definition}`);
             });
-            content += `\n`;
           }
-          content += `${'-'.repeat(50)}\n\n`;
+          addLines(' ');
         });
-        
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${item.title.replace(/\s+/g, '_')}.txt`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+
+        doc.save(`${item.title.replace(/\s+/g, '_')}.pdf`);
       } else {
         const downloadUrl = `http://localhost:4000${item.url}`;
         const link = document.createElement('a');

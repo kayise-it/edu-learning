@@ -703,7 +703,7 @@ function StudentDashboard() {
   const renderReadAloudControls = () => (
     <div className="read-aloud-controls">
       <div className="read-aloud-header">
-        <h3>🔊 Read Aloud</h3>
+        <h3>Read Aloud</h3>
         <div className="read-aloud-toggle">
           <label className="toggle-switch">
             <input 
@@ -724,7 +724,7 @@ function StudentDashboard() {
           className={`btn-read-aloud ${isReadingAloud ? 'active' : ''}`}
           onClick={toggleReadAloud}
         >
-          {isReadingAloud ? (isPaused ? '▶️ Resume' : '⏸️ Pause') : '🔊 Start Reading'}
+          {isReadingAloud ? (isPaused ? 'Resume' : 'Pause') : 'Start Reading'}
         </button>
         
         {isReadingAloud && (
@@ -732,14 +732,14 @@ function StudentDashboard() {
             className="btn-stop-read-aloud"
             onClick={stopReadAloud}
           >
-            ⏹️ Stop
+            Stop
           </button>
         )}
       </div>
       
       <div className="read-aloud-settings">
         <div className="setting-group">
-          <label>👤 Voice:</label>
+          <label>Voice:</label>
           <select 
             value={selectedReadAloudVoice} 
             onChange={handleReadAloudVoiceChange}
@@ -754,7 +754,7 @@ function StudentDashboard() {
         </div>
         
         <div className="setting-group">
-          <label>⚡ Speed: {readAloudRate.toFixed(1)}x</label>
+          <label>Speed: {readAloudRate.toFixed(1)}x</label>
           <input
             type="range"
             min="0.5"
@@ -767,7 +767,7 @@ function StudentDashboard() {
         </div>
         
         <div className="setting-group">
-          <label>🎵 Pitch: {readAloudPitch.toFixed(1)}</label>
+          <label>Pitch: {readAloudPitch.toFixed(1)}</label>
           <input
             type="range"
             min="0.5"
@@ -780,7 +780,7 @@ function StudentDashboard() {
         </div>
         
         <div className="setting-group">
-          <label>🔊 Volume: {Math.round(readAloudVolume * 100)}%</label>
+          <label>Volume: {Math.round(readAloudVolume * 100)}%</label>
           <input
             type="range"
             min="0"
@@ -817,7 +817,7 @@ function StudentDashboard() {
   const renderPronunciationTool = () => (
     <div className="pronunciation-tool-section">
       <div className="pronunciation-header">
-        <h3>🔊 Pronunciation Helper</h3>
+        <h3>Pronunciation Helper</h3>
         <button 
           className="btn-toggle-tool"
           onClick={() => setShowPronunciationTool(!showPronunciationTool)}
@@ -843,7 +843,7 @@ function StudentDashboard() {
                   onClick={handleStopSpeaking}
                   className="btn-stop"
                 >
-                  ⏹️ Stop
+                  Stop
                 </button>
               ) : (
                 <button 
@@ -851,14 +851,14 @@ function StudentDashboard() {
                   className="btn-pronounce"
                   disabled={!pronunciationWord.trim()}
                 >
-                  🔊 Pronounce
+                  Pronounce
                 </button>
               )}
             </div>
             
             <div className="voice-controls">
               <div className="control-group">
-                <label>👩 Voice:</label>
+                <label>Voice:</label>
                 <select 
                   value={selectedVoice} 
                   onChange={handleVoiceChange}
@@ -873,7 +873,7 @@ function StudentDashboard() {
               </div>
               
               <div className="control-group">
-                <label>⚡ Speed: {speechRate.toFixed(1)}x</label>
+                <label>Speed: {speechRate.toFixed(1)}x</label>
                 <input
                   type="range"
                   min="0.5"
@@ -886,7 +886,7 @@ function StudentDashboard() {
               </div>
               
               <div className="control-group">
-                <label>🎵 Pitch: {speechPitch.toFixed(1)}</label>
+                <label>Pitch: {speechPitch.toFixed(1)}</label>
                 <input
                   type="range"
                   min="0.5"
@@ -903,7 +903,7 @@ function StudentDashboard() {
           {recentWords.length > 0 && (
             <div className="recent-words">
               <div className="recent-header">
-                <span>📋 Recent Words:</span>
+                <span>Recent Words:</span>
                 <button onClick={handleClearRecent} className="btn-clear">
                   Clear
                 </button>
@@ -918,7 +918,7 @@ function StudentDashboard() {
                       setTimeout(() => handlePronounce(), 100);
                     }}
                   >
-                    🔊 {word}
+                    {word}
                   </button>
                 ))}
               </div>
@@ -926,7 +926,7 @@ function StudentDashboard() {
           )}
           
           <div className="pronunciation-tip">
-            <span className="tip-icon">💡</span>
+            <span className="tip-icon">Tip</span>
             <span className="tip-text">
               Type any word and click Pronounce to hear its correct pronunciation. 
               Default voice is set to female. Adjust voice, speed, and pitch to your preference.
@@ -947,7 +947,7 @@ function StudentDashboard() {
             ← Back to Dashboard
           </button>
           <button onClick={() => handleDownload(note)} className="btn-download">
-            ⬇️ Download Note
+            Download Note
           </button>
         </div>
 
@@ -956,7 +956,7 @@ function StudentDashboard() {
 
         <div className="note-content-wrapper">
           <div className="note-sidebar">
-            <h3>📑 Subtopics</h3>
+            <h3>Subtopics</h3>
             <ul className="subtopic-list">
               {note.subtopics?.map((sub, index) => (
                 <li 
@@ -978,17 +978,17 @@ function StudentDashboard() {
             {note.subtopics?.length > 0 && (
               <div className="note-stats-sidebar">
                 <div className="stat-item">
-                  <span>📚 Subtopics</span>
+                  <span>Subtopics</span>
                   <strong>{note.subtopics.length}</strong>
                 </div>
                 <div className="stat-item">
-                  <span>🔑 Keywords</span>
+                  <span>Keywords</span>
                   <strong>
                     {note.subtopics.reduce((acc, sub) => acc + (sub.keywords?.length || 0), 0)}
                   </strong>
                 </div>
                 <div className="stat-item">
-                  <span>👁️ Views</span>
+                  <span>Views</span>
                   <strong>{note.views || 0}</strong>
                 </div>
               </div>
@@ -1024,7 +1024,7 @@ function StudentDashboard() {
                   {note.subtopics[activeSubtopic]?.keywords && 
                    note.subtopics[activeSubtopic].keywords.length > 0 && (
                     <div className="keyword-section">
-                      <h3>🔑 Keywords & Definitions</h3>
+                      <h3>Keywords & Definitions</h3>
                       <div className="keyword-grid">
                         {note.subtopics[activeSubtopic].keywords.map((kw, idx) => (
                           <div key={idx} className="keyword-card">
@@ -1041,7 +1041,7 @@ function StudentDashboard() {
                               }}
                               title="Pronounce this word"
                             >
-                              🔊
+                              Speak
                             </button>
                           </div>
                         ))}
@@ -1112,7 +1112,7 @@ function StudentDashboard() {
             className="btn-change-grade"
             onClick={() => setSelectedGrade(null)}
           >
-            🔄 Change Grade
+            Change Grade
           </button>
           <button 
             className="btn-logout"
@@ -1129,7 +1129,7 @@ function StudentDashboard() {
       {/* Content Filters */}
       <div className="content-filters">
         <div className="filter-group">
-          <label>📚 Subject:</label>
+          <label>Subject:</label>
           <select 
             value={selectedSubject} 
             onChange={(e) => setSelectedSubject(e.target.value)}
@@ -1144,16 +1144,16 @@ function StudentDashboard() {
         </div>
 
         <div className="filter-group">
-          <label>📁 Resource Type:</label>
+          <label>Resource Type:</label>
           <select 
             value={selectedType} 
             onChange={(e) => setSelectedType(e.target.value)}
           >
-            <option value="all">📋 All Resources</option>
-            <option value="note">📝 Notes & Study Guides</option>
-            <option value="video">🎥 Video Lessons</option>
-            <option value="audio">🎧 Audio Lessons</option>
-            <option value="link">🔗 External Links</option>
+            <option value="all">All Resources</option>
+            <option value="note">Notes & Study Guides</option>
+            <option value="video">Video Lessons</option>
+            <option value="audio">Audio Lessons</option>
+            <option value="link">External Links</option>
           </select>
         </div>
       </div>
@@ -1161,25 +1161,25 @@ function StudentDashboard() {
       {/* Content Stats Summary */}
       <div className="content-stats-summary">
         <div className="stat-badge">
-          <span>📊 Total: {content.length}</span>
+          <span>Total: {content.length}</span>
         </div>
         <div className="stat-badge">
-          <span>📝 Notes: {content.filter(i => i.type === 'note').length}</span>
+          <span>Notes: {content.filter(i => i.type === 'note').length}</span>
         </div>
         <div className="stat-badge">
-          <span>🎥 Videos: {content.filter(i => i.type === 'video').length}</span>
+          <span>Videos: {content.filter(i => i.type === 'video').length}</span>
         </div>
         <div className="stat-badge">
-          <span>🎧 Audio: {content.filter(i => i.type === 'audio').length}</span>
+          <span>Audio: {content.filter(i => i.type === 'audio').length}</span>
         </div>
         <div className="stat-badge">
-          <span>🔗 Links: {content.filter(i => i.type === 'link').length}</span>
+          <span>Links: {content.filter(i => i.type === 'link').length}</span>
         </div>
       </div>
 
       {/* Content Grid */}
       <div className="content-section">
-        <h3>📚 Learning Resources</h3>
+        <h3>Learning Resources</h3>
         {filteredContent.length === 0 ? (
           <div className="no-content">
             <p>No resources available for Grade {selectedGrade} yet.</p>
@@ -1194,12 +1194,7 @@ function StudentDashboard() {
           <div className="content-grid">
             {filteredContent.map(item => (
               <div key={item._id} className="content-card">
-                <div className="content-icon">
-                  {item.type === 'note' && '📝'}
-                  {item.type === 'video' && '🎥'}
-                  {item.type === 'audio' && '🎧'}
-                  {item.type === 'link' && '🔗'}
-                </div>
+                <div className="content-icon" />
                 
                 <div className="content-info">
                   <h4>{item.title}</h4>
@@ -1212,9 +1207,9 @@ function StudentDashboard() {
                   {/* File info for videos/audio */}
                   {(item.type === 'video' || item.type === 'audio') && item.fileName && (
                     <div className="file-meta">
-                      <span className="file-name">📁 {item.fileName}</span>
+                      <span className="file-name">{item.fileName}</span>
                       {item.duration > 0 && (
-                        <span className="duration">⏱️ {item.duration} min</span>
+                        <span className="duration">{item.duration} min</span>
                       )}
                     </div>
                   )}
@@ -1222,8 +1217,8 @@ function StudentDashboard() {
                   {/* Subtopics preview for notes with keyword count */}
                   {item.type === 'note' && item.subtopics?.length > 0 && (
                     <div className="subtopics-preview">
-                      <span>📚 {item.subtopics.length} subtopics</span>
-                      <span>🔑 {item.subtopics.reduce((acc, sub) => acc + (sub.keywords?.length || 0), 0)} keywords</span>
+                      <span>{item.subtopics.length} subtopics</span>
+                      <span>{item.subtopics.reduce((acc, sub) => acc + (sub.keywords?.length || 0), 0)} keywords</span>
                     </div>
                   )}
 
@@ -1234,14 +1229,14 @@ function StudentDashboard() {
                         className={`btn-play ${playingAudio === item._id ? 'playing' : ''}`}
                         onClick={() => handleViewContent(item)}
                       >
-                        {playingAudio === item._id ? '⏸️ Pause' : '▶️ Play'}
+                        {playingAudio === item._id ? 'Pause' : 'Play'}
                       </button>
                     ) : (
                       <button 
                         className="btn-view"
                         onClick={() => handleViewContent(item)}
                       >
-                        {item.type === 'link' ? '🔗 Visit Link' : '👁️ View'}
+                        {item.type === 'link' ? 'Open Link' : 'View'}
                       </button>
                     )}
                     
@@ -1250,15 +1245,15 @@ function StudentDashboard() {
                         className="btn-download"
                         onClick={() => handleDownload(item)}
                       >
-                        ⬇️ Download
+                        Download
                       </button>
                     )}
                   </div>
 
                   {/* Stats */}
                   <div className="content-stats">
-                    <span>👁️ {item.views || 0} views</span>
-                    <span>⬇️ {item.downloads || 0} downloads</span>
+                    <span>{item.views || 0} views</span>
+                    <span>{item.downloads || 0} downloads</span>
                   </div>
                 </div>
               </div>
@@ -1269,7 +1264,7 @@ function StudentDashboard() {
 
       {/* Quizzes Section */}
       <div className="quizzes-section">
-        <h3>📋 Available Quizzes</h3>
+        <h3>Available Quizzes</h3>
         {quizzes.length === 0 ? (
           <div className="no-content">
             <p>No quizzes available for Grade {selectedGrade} yet.</p>
@@ -1285,16 +1280,16 @@ function StudentDashboard() {
                 </div>
                 
                 <div className="quiz-info">
-                  <p>📚 {quiz.subject}</p>
-                  <p>❓ {quiz.questions?.length || 0} questions</p>
-                  <p>⏱️ {quiz.timeLimit} minutes</p>
-                  <p>✅ Pass: {quiz.passingScore}%</p>
-                  <p>📅 Due: {new Date(quiz.dueDate).toLocaleDateString()}</p>
+                  <p>{quiz.subject}</p>
+                  <p>{quiz.questions?.length || 0} questions</p>
+                  <p>{quiz.timeLimit} minutes</p>
+                  <p>Pass: {quiz.passingScore}%</p>
+                  <p>Due: {new Date(quiz.dueDate).toLocaleDateString()}</p>
                 </div>
 
                 <div className="quiz-footer">
                   <span className="attempts">
-                    🎯 {quiz.attemptsRemaining !== undefined ? quiz.attemptsRemaining : quiz.attemptsAllowed} attempt(s) left
+                    {quiz.attemptsRemaining !== undefined ? quiz.attemptsRemaining : quiz.attemptsAllowed} attempt(s) left
                   </span>
                   <button 
                     className="btn-start-quiz"

@@ -745,10 +745,10 @@ function AdminDashboard() {
               }}
               required
             >
-              <option value="note">📝 Note / Study Guide</option>
-              <option value="video">🎥 Video Lecture (Upload File)</option>
-              <option value="audio">🎧 Voice Over / Audio (Upload File)</option>
-              <option value="link">🔗 External Link</option>
+              <option value="note">Note / Study Guide</option>
+              <option value="video">Video Lecture</option>
+              <option value="audio">Audio Lesson</option>
+              <option value="link">External Link</option>
             </select>
           </div>
 
@@ -1004,7 +1004,7 @@ function AdminDashboard() {
             className={`grade-filter-btn ${selectedGradeFilter === 'all' ? 'active' : ''}`}
             onClick={() => setSelectedGradeFilter('all')}
           >
-            📋 All Grades
+            All Grades
           </button>
           {allGrades.map(grade => (
             <button 
@@ -1023,12 +1023,7 @@ function AdminDashboard() {
           <div className="content-grid">
             {filteredContent.map(item => (
               <div key={item._id} className="content-card">
-                <div className="content-icon">
-                  {item.type === 'note' && '📝'}
-                  {item.type === 'video' && '🎥'}
-                  {item.type === 'audio' && '🎧'}
-                  {item.type === 'link' && '🔗'}
-                </div>
+                <div className="content-icon" />
                 <div className="content-details">
                   <div className="content-header">
                     <h5>{item.title}</h5>
@@ -1042,9 +1037,9 @@ function AdminDashboard() {
                   
                   {(item.type === 'video' || item.type === 'audio') && item.fileName && (
                     <div className="file-info">
-                      <span className="file-name-badge">📁 {item.fileName}</span>
+                      <span className="file-name-badge">{item.fileName}</span>
                       {item.duration > 0 && (
-                        <span className="duration">⏱️ {item.duration} min</span>
+                        <span className="duration">{item.duration} min</span>
                       )}
                       {item.fileSize > 0 && (
                         <span className="file-size">
@@ -1056,7 +1051,7 @@ function AdminDashboard() {
                   
                   {item.type === 'note' && item.subtopics?.length > 0 && (
                     <div className="content-subtopics">
-                      <strong>📚 {item.subtopics.length} Subtopics</strong>
+                      <strong>{item.subtopics.length} Subtopics</strong>
                     </div>
                   )}
                   
@@ -1080,14 +1075,14 @@ function AdminDashboard() {
                         onClick={() => handlePreviewAsStudent(item.grade)}
                         title="Preview as student"
                       >
-                        👁️ Preview
+                        Preview
                       </button>
                       <button 
                         onClick={() => handleEditContent(item)}
                         className="btn-edit"
                         style={{ backgroundColor: '#f39c12', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '5px' }}
                       >
-                        ✏️ Edit
+                        Edit
                       </button>
                       <button 
                         onClick={() => handleDeleteContent(item._id)}

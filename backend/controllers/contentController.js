@@ -2,6 +2,54 @@ const Content = require('../models/Content');
 const path = require('path');
 const fs = require('fs');
 
+const sortContentItems = (items = []) => {
+  const getSortValues = (item) => {
+    const sourceText = `${item?.topic || ''} ${item?.title || ''}`.trim();
+    const termMatch = sourceText.match(/term\s*(\d+)/i);
+    const topicMatch = sourceText.match(/topic\s*(\d+)/i);
+    const firstSubtopicTitle = Array.isArray(item?.subtopics) && item.subtopics.length > 0
+      ? (item.subtopics[0]?.title || '').trim().toLowerCase()
+      : '';
+
+    return {
+      term: termMatch ? parseInt(termMatch[1], 10) : Number.MAX_SAFE_INTEGER,
+      topic: topicMatch ? parseInt(topicMatch[1], 10) : Number.MAX_SAFE_INTEGER,
+      subtopicTitle: firstSubtopicTitle,
+      fallbackKey: sourceText.toLowerCase()
+    };
+  };
+
+  return [...items].sort((a, b) => {
+    const aIsNote = a?.type === 'note';
+    const bIsNote = b?.type === 'note';
+
+    if (aIsNote && bIsNote) {
+      const aValues = getSortValues(a);
+      const bValues = getSortValues(b);
+
+      if (aValues.term !== bValues.term) {
+        return aValues.term - bValues.term;
+      }
+
+      if (aValues.topic !== bValues.topic) {
+        return aValues.topic - bValues.topic;
+      }
+
+      if (aValues.subtopicTitle && bValues.subtopicTitle && aValues.subtopicTitle !== bValues.subtopicTitle) {
+        return aValues.subtopicTitle.localeCompare(bValues.subtopicTitle);
+      }
+
+      if (aValues.fallbackKey && bValues.fallbackKey && aValues.fallbackKey !== bValues.fallbackKey) {
+        return aValues.fallbackKey.localeCompare(bValues.fallbackKey);
+      }
+    } else if (aIsNote !== bIsNote) {
+      return aIsNote ? -1 : 1;
+    }
+
+    return new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0);
+  });
+};
+
 // @desc    Upload content with file
 // @route   POST /api/admin/content
 exports.uploadContent = async (req, res) => {
@@ -127,8 +175,8 @@ exports.getAllContent = async (req, res) => {
     if (grade && !isNaN(parseInt(grade))) query.grade = parseInt(grade);
     if (subject) query.subject = { $regex: new RegExp(subject, "i") };
     
-    const content = await Content.find(query).sort({ createdAt: -1 });
-    res.json(content);
+    const content = await Content.find(query);
+    res.json(sortContentItems(content));
   } catch (error) {
     console.error("Error fetching content:", error);
     res.status(500).json({ message: error.message });
@@ -171,8 +219,8 @@ exports.getStudentContent = async (req, res) => {
     if (subject && subject.trim() !== '') query.subject = { $regex: new RegExp(subject, "i") };
     if (type && type.trim() !== '') query.type = type;
     
-    const content = await Content.find(query).sort({ createdAt: -1 });
-    res.json(content);
+    const content = await Content.find(query);
+    res.json(sortContentItems(content));
   } catch (error) {
     console.error("Error fetching student content:", error);
     res.status(500).json({ message: error.message });

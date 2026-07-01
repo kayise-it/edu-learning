@@ -138,11 +138,59 @@ function StudentDashboard() {
     setLoading(false);
   }, []);
 
+  const sortContentItems = (items = []) => {
+    const getSortValues = (item) => {
+      const sourceText = `${item?.topic || ''} ${item?.title || ''}`.trim();
+      const termMatch = sourceText.match(/term\s*(\d+)/i);
+      const topicMatch = sourceText.match(/topic\s*(\d+)/i);
+      const firstSubtopicTitle = Array.isArray(item?.subtopics) && item.subtopics.length > 0
+        ? (item.subtopics[0]?.title || '').trim().toLowerCase()
+        : '';
+
+      return {
+        term: termMatch ? parseInt(termMatch[1], 10) : Number.MAX_SAFE_INTEGER,
+        topic: topicMatch ? parseInt(topicMatch[1], 10) : Number.MAX_SAFE_INTEGER,
+        subtopicTitle: firstSubtopicTitle,
+        fallbackKey: sourceText.toLowerCase()
+      };
+    };
+
+    return [...items].sort((a, b) => {
+      const aIsNote = a?.type === 'note';
+      const bIsNote = b?.type === 'note';
+
+      if (aIsNote && bIsNote) {
+        const aValues = getSortValues(a);
+        const bValues = getSortValues(b);
+
+        if (aValues.term !== bValues.term) {
+          return aValues.term - bValues.term;
+        }
+
+        if (aValues.topic !== bValues.topic) {
+          return aValues.topic - bValues.topic;
+        }
+
+        if (aValues.subtopicTitle && bValues.subtopicTitle && aValues.subtopicTitle !== bValues.subtopicTitle) {
+          return aValues.subtopicTitle.localeCompare(bValues.subtopicTitle);
+        }
+
+        if (aValues.fallbackKey && bValues.fallbackKey && aValues.fallbackKey !== bValues.fallbackKey) {
+          return aValues.fallbackKey.localeCompare(bValues.fallbackKey);
+        }
+      } else if (aIsNote !== bIsNote) {
+        return aIsNote ? -1 : 1;
+      }
+
+      return new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0);
+    });
+  };
+
   // Fetch content based on grade
   const fetchContent = async (grade) => {
     try {
       const response = await api.get(`/api/student/content?grade=${grade}`);
-      setContent(response.data);
+      setContent(sortContentItems(response.data));
     } catch (error) {
       console.error('Error fetching content:', error);
     }

@@ -64,6 +64,22 @@ const QuizSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  attemptsAllowed: {
+    type: Number,
+    default: 1,
+    min: 1,
+    max: 10
+  },
+  passingScore: {
+    type: Number,
+    default: 50,
+    min: 0,
+    max: 100
+  },
   attempts: {
     type: Number,
     default: 0

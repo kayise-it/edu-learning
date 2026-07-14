@@ -83,13 +83,30 @@ exports.register = async (req, res) => {
 exports.getAvailableQuizzes = async (req, res) => {
   try {
     const { grade, subject, studentId } = req.query;
-    let query = { 
-      grade: parseInt(grade),
-      isActive: true,
-      dueDate: { $gte: new Date() }
-    };
-    
-    if (subject) query.subject = subject;
+    let query = {};
+
+    if (grade) {
+      query.grade = parseInt(grade);
+    }
+
+    if (subject) {
+      query.subject = subject;
+    }
+
+    query.$or = [
+      { isActive: true },
+      { isActive: { $exists: false } }
+    ];
+
+    query.$and = [
+      {
+        $or: [
+          { dueDate: { $gte: new Date() } },
+          { dueDate: null },
+          { dueDate: { $exists: false } }
+        ]
+      }
+    ];
     
     const quizzes = await Quiz.find(query)
       .select('-questions.correctAnswer')
@@ -102,12 +119,13 @@ exports.getAvailableQuizzes = async (req, res) => {
           studentId,
           quizId: quiz._id
         });
+        const attemptsAllowed = typeof quiz.attemptsAllowed === 'number' ? quiz.attemptsAllowed : 1;
         
         return {
           ...quiz.toObject(),
           attemptsUsed: attemptCount,
-          attemptsRemaining: Math.max(0, quiz.attemptsAllowed - attemptCount),
-          canTake: attemptCount < quiz.attemptsAllowed
+          attemptsRemaining: Math.max(0, attemptsAllowed - attemptCount),
+          canTake: attemptCount < attemptsAllowed
         };
       }));
       
@@ -131,6 +149,8 @@ exports.getQuizForTake = async (req, res) => {
       return res.status(404).json({ message: 'Quiz not found' });
     }
     
+    const attemptsAllowed = typeof quiz.attemptsAllowed === 'number' ? quiz.attemptsAllowed : 1;
+
     // Check if student has attempts remaining
     if (studentId) {
       const attemptCount = await QuizAttempt.countDocuments({
@@ -138,11 +158,11 @@ exports.getQuizForTake = async (req, res) => {
         quizId: quiz._id
       });
       
-      if (attemptCount >= quiz.attemptsAllowed) {
+      if (attemptCount >= attemptsAllowed) {
         return res.status(403).json({ 
-          message: `You have used all ${quiz.attemptsAllowed} attempts for this quiz`,
+          message: `You have used all ${attemptsAllowed} attempts for this quiz`,
           attemptsUsed: attemptCount,
-          attemptsAllowed: quiz.attemptsAllowed
+          attemptsAllowed
         });
       }
     }
@@ -187,17 +207,20 @@ exports.submitQuiz = async (req, res) => {
       return res.status(404).json({ message: 'Quiz not found' });
     }
     
+    const attemptsAllowed = typeof quiz.attemptsAllowed === 'number' ? quiz.attemptsAllowed : 1;
+    const passingScore = typeof quiz.passingScore === 'number' ? quiz.passingScore : 50;
+
     // Check attempts remaining
     const attemptCount = await QuizAttempt.countDocuments({
       studentId,
       quizId: quiz._id
     });
     
-    if (attemptCount >= quiz.attemptsAllowed) {
+    if (attemptCount >= attemptsAllowed) {
       return res.status(403).json({ 
-        message: `You have used all ${quiz.attemptsAllowed} attempts`,
+        message: `You have used all ${attemptsAllowed} attempts`,
         attemptsUsed: attemptCount,
-        attemptsAllowed: quiz.attemptsAllowed
+        attemptsAllowed
       });
     }
     
@@ -219,7 +242,7 @@ exports.submitQuiz = async (req, res) => {
     });
     
     const percentage = quiz.totalPoints > 0 ? (score / quiz.totalPoints) * 100 : 0;
-    const passed = percentage >= quiz.passingScore;
+    const passed = percentage >= passingScore;
     
     const attempt = new QuizAttempt({
       studentId,
@@ -261,7 +284,7 @@ exports.submitQuiz = async (req, res) => {
       totalPoints: quiz.totalPoints,
       percentage: percentage.toFixed(1),
       passed,
-      attemptsRemaining: quiz.attemptsAllowed - (attemptCount + 1),
+      attemptsRemaining: attemptsAllowed - (attemptCount + 1),
       autoSubmitted: autoSubmitted || false
     });
   } catch (error) {
@@ -327,12 +350,13 @@ exports.getDashboard = async (req, res) => {
         studentId: req.params.studentId,
         quizId: quiz._id
       });
+      const attemptsAllowed = typeof quiz.attemptsAllowed === 'number' ? quiz.attemptsAllowed : 1;
       
       return {
         ...quiz.toObject(),
         attemptsUsed: attemptCount,
-        attemptsRemaining: Math.max(0, quiz.attemptsAllowed - attemptCount),
-        canTake: attemptCount < quiz.attemptsAllowed
+        attemptsRemaining: Math.max(0, attemptsAllowed - attemptCount),
+        canTake: attemptCount < attemptsAllowed
       };
     }));
     
